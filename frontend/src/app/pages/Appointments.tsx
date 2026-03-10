@@ -1,58 +1,88 @@
-import { useState } from "react";
-import { Search, Plus, Download, CreditCard, DollarSign, FileText } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Calendar as CalendarIcon, Clock, Plus, Search } from "lucide-react";
 import { toast } from "sonner";
+import { getAllAppointments, createAppointment, deleteAppointment, Appointment } from "../services/api";
 
-const billingsData: {
-  id: string;
-  patientName: string;
-  patientId: string;
-  treatment: string;
-  amount: number;
-  paymentStatus: string;
-  date: string;
-  method: string;
-}[] = [];
-
-export default function Billing() {
+export default function Appointments() {
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   
+  // Fetch appointments from backend on mount
+  useEffect(() => {
+    fetchAppointments();
+  }, []);
+
+  const fetchAppointments = async () => {
+    setLoading(true);
+    setError(null);
+    const result = await getAllAppointments();
+    if (result.error) {
+      setError(result.error);
+      toast.error("Failed to load appointments", { description: result.error });
+    } else {
+      setAppointments(result.data || []);
+    }
+    setLoading(false);
+  };
+
   // Form state
   const [formData, setFormData] = useState({
     patientName: "",
-    patientId: "",
-    treatment: "",
-    amount: "",
+    doctorName: "",
     date: "",
-    method: "Cash",
-    paymentStatus: "Pending"
+    time: "",
+    type: "Check-up",
+    status: "Pending"
   });
 
-  const filteredBillings = billingsData.filter((billing) => {
+  const filteredAppointments = appointments.filter((appointment) => {
     const matchesSearch =
-      billing.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      billing.id.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesFilter = filterStatus === "all" || billing.paymentStatus === filterStatus;
+      appointment.patientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      appointment.doctorName?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesFilter = filterStatus === "all" || appointment.status === filterStatus;
     return matchesSearch && matchesFilter;
   });
 
-  const totalAmount = filteredBillings.reduce((sum, b) => sum + b.amount, 0);
-  const paidAmount = filteredBillings
-    .filter((b) => b.paymentStatus === "Paid")
-    .reduce((sum, b) => sum + b.amount, 0);
-  const pendingAmount = filteredBillings
-    .filter((b) => b.paymentStatus === "Pending")
-    .reduce((sum, b) => sum + b.amount, 0);
-
   // Button Handlers
-  const handleAddInvoice = (e: React.FormEvent) => {
+  const handleAddAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("Invoice created!", {
-      description: `Invoice for ${formData.patientName} - $${formData.amount} has been created.`
-    });
-    setIsAddModalOpen(false);
-    setFormData({ patientName: "", patientId: "", treatment: "", amount: "", date: "", method: "Cash", paymentStatus: "Pending" });
+    const appointmentData = {
+      patientName: formData.patientName,
+      doctorName: formData.doctorName,
+      date: formData.date,
+      time: formData.time,
+      type: formData.type,
+      status: formData.status
+    };
+    
+    const result = await createAppointment(appointmentData);
+    if (result.error) {
+      toast.error("Failed to add appointment", { description: result.error });
+    } else {
+      toast.success("Appointment scheduled!", {
+        description: `Appointment for ${formData.patientName} with ${formData.doctorName} on ${formData.date} at ${formData.time}`
+      });
+      setAppointments([...appointments, result.data!]);
+      setIsAddModalOpen(false);
+      setFormData({ patientName: "", doctorName: "", date: "", time: "", type: "Check-up", status: "Pending" });
+    }
+  };
+
+  const handleDeleteAppointment = async (appointment: Appointment) => {
+    if (!appointment.id) return;
+    const result = await deleteAppointment(appointment.id);
+    if (result.error) {
+      toast.error("Failed to delete appointment", { description: result.error });
+    } else {
+      toast.success("Appointment deleted!", {
+        description: `Appointment for ${appointment.patientName} has been removed.`
+      });
+      setAppointments(appointments.filter(a => a.id !== appointment.id));
+    }
   };
 
   return (
@@ -60,15 +90,15 @@ export default function Billing() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold text-[#111827]">Billing</h1>
-          <p className="text-gray-500 mt-1">Manage patient billing and payments</p>
+          <h1 className="text-3xl font-bold text-[#111827]">Appointments</h1>
+          <p className="text-gray-500 mt-1">Manage patient appointments and schedules</p>
         </div>
         <button 
           onClick={() => setIsAddModalOpen(true)}
           className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors"
         >
           <Plus className="w-5 h-5" />
-          New Invoice
+          New Appointment
         </button>
       </div>
 
@@ -77,24 +107,24 @@ export default function Billing() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 mb-1">Total Amount</p>
+              <p className="text-sm text-gray-500 mb-1">Total Appointments</p>
               <h3 className="text-2xl font-bold text-[#111827]">
-                ${totalAmount.toFixed(2) || "—"}
+                {loading ? "..." : appointments.length || "—"}
               </h3>
             </div>
-            <DollarSign className="w-8 h-8 text-blue-500" />
+            <CalendarIcon className="w-8 h-8 text-blue-500" />
           </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 mb-1">Paid</p>
+              <p className="text-sm text-gray-500 mb-1">Completed</p>
               <h3 className="text-2xl font-bold text-green-600">
-                ${paidAmount.toFixed(2) || "—"}
+                {loading ? "..." : appointments.filter((a) => a.status === "Completed").length || "—"}
               </h3>
             </div>
-            <CreditCard className="w-8 h-8 text-green-500" />
+            <CalendarIcon className="w-8 h-8 text-green-500" />
           </div>
         </div>
 
@@ -103,22 +133,22 @@ export default function Billing() {
             <div>
               <p className="text-sm text-gray-500 mb-1">Pending</p>
               <h3 className="text-2xl font-bold text-yellow-600">
-                ${pendingAmount.toFixed(2) || "—"}
+                {loading ? "..." : appointments.filter((a) => a.status === "Pending").length || "—"}
               </h3>
             </div>
-            <DollarSign className="w-8 h-8 text-yellow-500" />
+            <Clock className="w-8 h-8 text-yellow-500" />
           </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 mb-1">Invoices</p>
-              <h3 className="text-2xl font-bold text-[#111827]">
-                {billingsData.length || "—"}
+              <p className="text-sm text-gray-500 mb-1">Cancelled</p>
+              <h3 className="text-2xl font-bold text-red-600">
+                {loading ? "..." : appointments.filter((a) => a.status === "Cancelled").length || "—"}
               </h3>
             </div>
-            <FileText className="w-8 h-8 text-purple-500" />
+            <CalendarIcon className="w-8 h-8 text-red-500" />
           </div>
         </div>
       </div>
@@ -130,7 +160,7 @@ export default function Billing() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Search invoices by patient name or ID..."
+              placeholder="Search appointments by patient or doctor name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -142,39 +172,37 @@ export default function Billing() {
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="all">All Status</option>
-            <option value="Paid">Paid</option>
             <option value="Pending">Pending</option>
-            <option value="Overdue">Overdue</option>
+            <option value="Confirmed">Confirmed</option>
+            <option value="Completed">Completed</option>
+            <option value="Cancelled">Cancelled</option>
           </select>
         </div>
       </div>
 
-      {/* Billing Table */}
+      {/* Appointments Table */}
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Invoice ID
+                  Appointment ID
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Patient Name
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Patient ID
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Treatment
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Amount
+                  Doctor Name
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Date
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Method
+                  Time
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Type
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
@@ -182,62 +210,64 @@ export default function Billing() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredBillings.length > 0 ? (
-                filteredBillings.map((billing) => (
-                  <tr key={billing.id} className="hover:bg-gray-50 transition-colors">
+              {filteredAppointments.length > 0 ? (
+                filteredAppointments.map((appointment) => (
+                  <tr key={appointment.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#2563EB]">
-                      {billing.id}
+                      {appointment.id}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#111827]">
-                      {billing.patientName}
+                      {appointment.patientName}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {billing.patientId}
+                      {appointment.doctorName}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {billing.treatment}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#111827]">
-                      ${billing.amount.toFixed(2)}
+                      {appointment.date ? new Date(appointment.date).toLocaleDateString() : ""}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(billing.date).toLocaleDateString()}
+                      <div className="flex items-center gap-1">
+                        <Clock className="w-4 h-4 text-gray-400" />
+                        {appointment.time}
+                      </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {billing.method}
+                      {appointment.type}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
                         className={`px-2 py-1 text-xs font-medium rounded-full ${
-                          billing.paymentStatus === "Paid"
+                          appointment.status === "Completed"
                             ? "bg-green-100 text-green-700"
-                            : billing.paymentStatus === "Pending"
+                            : appointment.status === "Pending"
                             ? "bg-yellow-100 text-yellow-700"
+                            : appointment.status === "Confirmed"
+                            ? "bg-blue-100 text-blue-700"
                             : "bg-red-100 text-red-700"
                         }`}
                       >
-                        {billing.paymentStatus}
+                        {appointment.status}
                       </span>
                     </td>
                   </tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12">
+                  <td colSpan={7} className="px-6 py-12">
                     <div className="flex flex-col items-center justify-center text-center">
-                      <FileText className="w-16 h-16 text-gray-300 mb-4" />
+                      <CalendarIcon className="w-16 h-16 text-gray-300 mb-4" />
                       <h3 className="text-lg font-medium text-gray-900 mb-1">
-                        No billing records found
+                        No appointments found
                       </h3>
                       <p className="text-sm text-gray-500 mb-4">
-                        Create invoices to start tracking payments.
+                        Create appointments to manage your schedule.
                       </p>
                       <button 
                         onClick={() => setIsAddModalOpen(true)}
                         className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors"
                       >
                         <Plus className="w-5 h-5" />
-                        New Invoice
+                        New Appointment
                       </button>
                     </div>
                   </td>
@@ -248,12 +278,12 @@ export default function Billing() {
         </div>
       </div>
 
-      {/* Add Invoice Modal */}
+      {/* Add Appointment Modal */}
       {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
-            <h2 className="text-xl font-semibold text-[#111827] mb-4">Create New Invoice</h2>
-            <form onSubmit={handleAddInvoice} className="space-y-4">
+            <h2 className="text-xl font-semibold text-[#111827] mb-4">Schedule New Appointment</h2>
+            <form onSubmit={handleAddAppointment} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Patient Name</label>
                 <input
@@ -261,74 +291,65 @@ export default function Billing() {
                   value={formData.patientName}
                   onChange={(e) => setFormData({ ...formData, patientName: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="John Doe"
                   required
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Patient ID</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Doctor Name</label>
                 <input
                   type="text"
-                  value={formData.patientId}
-                  onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
+                  value={formData.doctorName}
+                  onChange={(e) => setFormData({ ...formData, doctorName: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="Dr. Smith"
                   required
                 />
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Treatment</label>
-                <input
-                  type="text"
-                  value={formData.treatment}
-                  onChange={(e) => setFormData({ ...formData, treatment: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g., General Checkup"
-                  required
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                  <input
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
+                  <input
+                    type="time"
+                    value={formData.time}
+                    onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Amount ($)</label>
-                <input
-                  type="number"
-                  value={formData.amount}
-                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="0.00"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
-                <input
-                  type="date"
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
                 <select
-                  value={formData.method}
-                  onChange={(e) => setFormData({ ...formData, method: e.target.value })}
+                  value={formData.type}
+                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="Cash">Cash</option>
-                  <option value="Credit Card">Credit Card</option>
-                  <option value="Debit Card">Debit Card</option>
-                  <option value="Insurance">Insurance</option>
+                  <option value="Check-up">Check-up</option>
+                  <option value="Follow-up">Follow-up</option>
+                  <option value="Consultation">Consultation</option>
+                  <option value="Emergency">Emergency</option>
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Status</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
                 <select
-                  value={formData.paymentStatus}
-                  onChange={(e) => setFormData({ ...formData, paymentStatus: e.target.value })}
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="Pending">Pending</option>
-                  <option value="Paid">Paid</option>
-                  <option value="Overdue">Overdue</option>
+                  <option value="Confirmed">Confirmed</option>
                 </select>
               </div>
               <div className="flex gap-3 pt-4">
@@ -343,7 +364,7 @@ export default function Billing() {
                   type="submit"
                   className="flex-1 px-4 py-2 bg-[#2563EB] text-white rounded-lg hover:bg-[#1d4ed8] transition-colors"
                 >
-                  Create Invoice
+                  Schedule
                 </button>
               </div>
             </form>

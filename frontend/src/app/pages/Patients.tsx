@@ -1,24 +1,39 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, Plus, Edit, Trash2, Filter, Download, Users as UsersIcon } from "lucide-react";
 import { toast } from "sonner";
-
-const patientsData: {
-  id: string;
-  name: string;
-  age: number;
-  gender: string;
-  contact: string;
-  doctor: string;
-  status: string;
-}[] = [];
+import { getAllPatients, createPatient, updatePatient, deletePatient, Patient } from "../services/api";
 
 export default function Patients() {
+  const [patients, setPatients] = useState<Patient[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [selectedPatient, setSelectedPatient] = useState<typeof patientsData[0] | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
+
+  // Fetch patients from backend on mount
+  useEffect(() => {
+    fetchPatients();
+  }, []);
+
+  // Fetch all patients from API
+  const fetchPatients = async () => {
+    setLoading(true);
+    setError(null);
+    const result = await getAllPatients();
+    if (result.error) {
+      setError(result.error);
+      toast.error("Failed to load patients", {
+        description: result.error
+      });
+    } else {
+      setPatients(result.data || []);
+    }
+    setLoading(false);
+  };
 
   // Form state
   const [formData, setFormData] = useState({
@@ -26,14 +41,22 @@ export default function Patients() {
     age: "",
     gender: "Male",
     contact: "",
+    email: "",
+    address: "",
+    bloodType: "",
     doctor: "",
     status: "Active"
   });
 
-  const filteredPatients = patientsData.filter((patient) => {
+  // Handle form changes including doctor field (stored in address field for backend compatibility)
+  const handleFormChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const filteredPatients = patients.filter((patient) => {
     const matchesSearch =
-      patient.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      patient.id.toLowerCase().includes(searchTerm.toLowerCase());
+      patient.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      patient.id?.toString().includes(searchTerm.toLowerCase());
     const matchesFilter = filterStatus === "all" || patient.status === filterStatus;
     return matchesSearch && matchesFilter;
   });
@@ -45,46 +68,102 @@ export default function Patients() {
     });
   };
 
-  const handleAddPatient = (e: React.FormEvent) => {
+  const handleAddPatient = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("Patient added successfully!", {
-      description: `${formData.name} has been added to the system.`
-    });
-    setIsAddModalOpen(false);
-    setFormData({ name: "", age: "", gender: "Male", contact: "", doctor: "", status: "Active" });
+    const patientData = {
+      name: formData.name,
+      age: parseInt(formData.age),
+      gender: formData.gender,
+      contact: formData.contact,
+      email: formData.email,
+      address: formData.address,
+      bloodType: formData.bloodType,
+      doctor: formData.doctor,
+      status: formData.status
+    };
+    
+    const result = await createPatient(patientData);
+    if (result.error) {
+      toast.error("Failed to add patient", {
+        description: result.error
+      });
+    } else {
+      toast.success("Patient added successfully!", {
+        description: `${formData.name} has been added to the system.`
+      });
+      setPatients([...patients, result.data!]);
+      setIsAddModalOpen(false);
+      setFormData({ name: "", age: "", gender: "Male", contact: "", email: "", address: "", bloodType: "", doctor: "", status: "Active" });
+    }
   };
 
-  const handleEditPatient = (patient: typeof patientsData[0]) => {
+  const handleEditPatient = (patient: Patient) => {
     setSelectedPatient(patient);
     setFormData({
-      name: patient.name,
-      age: patient.age.toString(),
-      gender: patient.gender,
-      contact: patient.contact,
-      doctor: patient.doctor,
-      status: patient.status
+      name: patient.name || "",
+      age: patient.age?.toString() || "",
+      gender: patient.gender || "Male",
+      contact: patient.contact || "",
+      email: patient.email || "",
+      address: patient.address || "",
+      bloodType: patient.bloodType || "",
+      doctor: patient.doctor || "",
+      status: patient.status || "Active"
     });
     setIsEditModalOpen(true);
   };
 
-  const handleUpdatePatient = (e: React.FormEvent) => {
+  const handleUpdatePatient = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("Patient updated successfully!", {
-      description: `${formData.name}'s information has been updated.`
-    });
-    setIsEditModalOpen(false);
-    setSelectedPatient(null);
+    if (!selectedPatient) return;
+    
+    const updatedPatient: Patient = {
+      id: selectedPatient.id,
+      name: formData.name,
+      age: parseInt(formData.age),
+      gender: formData.gender,
+      contact: formData.contact,
+      email: formData.email,
+      address: formData.address,
+      bloodType: formData.bloodType,
+      doctor: formData.doctor,
+      status: formData.status
+    };
+    
+    const result = await updatePatient(selectedPatient.id!, updatedPatient);
+    if (result.error) {
+      toast.error("Failed to update patient", {
+        description: result.error
+      });
+    } else {
+      toast.success("Patient updated successfully!", {
+        description: `${formData.name}'s information has been updated.`
+      });
+      setPatients(patients.map(p => p.id === selectedPatient.id ? result.data! : p));
+      setIsEditModalOpen(false);
+      setSelectedPatient(null);
+    }
   };
 
-  const handleDeleteClick = (patient: typeof patientsData[0]) => {
+  const handleDeleteClick = (patient: Patient) => {
     setSelectedPatient(patient);
     setIsDeleteDialogOpen(true);
   };
 
-  const handleConfirmDelete = () => {
-    toast.success("Patient deleted successfully!", {
-      description: `${selectedPatient?.name} has been removed from the system.`
-    });
+  const handleConfirmDelete = async () => {
+    if (!selectedPatient?.id) return;
+    
+    const result = await deletePatient(selectedPatient.id);
+    if (result.error) {
+      toast.error("Failed to delete patient", {
+        description: result.error
+      });
+    } else {
+      toast.success("Patient deleted successfully!", {
+        description: `${selectedPatient.name} has been removed from the system.`
+      });
+      setPatients(patients.filter(p => p.id !== selectedPatient.id));
+    }
     setIsDeleteDialogOpen(false);
     setSelectedPatient(null);
   };
@@ -128,7 +207,7 @@ export default function Patients() {
             <div>
               <p className="text-sm text-gray-500 mb-1">Total Patients</p>
               <h3 className="text-2xl font-bold text-[#111827]">
-                {patientsData.length || "—"}
+                {loading ? "..." : patients.length || "—"}
               </h3>
             </div>
             <UsersIcon className="w-8 h-8 text-blue-500" />
@@ -140,7 +219,7 @@ export default function Patients() {
             <div>
               <p className="text-sm text-gray-500 mb-1">Active</p>
               <h3 className="text-2xl font-bold text-green-600">
-                {patientsData.filter((p) => p.status === "Active").length || "—"}
+                {loading ? "..." : patients.filter((p) => p.status === "Active").length || "—"}
               </h3>
             </div>
             <UsersIcon className="w-8 h-8 text-green-500" />
@@ -152,7 +231,7 @@ export default function Patients() {
             <div>
               <p className="text-sm text-gray-500 mb-1">In Treatment</p>
               <h3 className="text-2xl font-bold text-yellow-600">
-                {patientsData.filter((p) => p.status === "In Treatment").length || "—"}
+                {loading ? "..." : patients.filter((p) => p.status === "In Treatment").length || "—"}
               </h3>
             </div>
             <UsersIcon className="w-8 h-8 text-yellow-500" />
@@ -164,7 +243,7 @@ export default function Patients() {
             <div>
               <p className="text-sm text-gray-500 mb-1">Discharged</p>
               <h3 className="text-2xl font-bold text-gray-600">
-                {patientsData.filter((p) => p.status === "Discharged").length || "—"}
+                {loading ? "..." : patients.filter((p) => p.status === "Discharged").length || "—"}
               </h3>
             </div>
             <UsersIcon className="w-8 h-8 text-gray-500" />

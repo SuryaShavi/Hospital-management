@@ -1,23 +1,34 @@
-import { useState } from "react";
-import { Search, Plus, Mail, Phone, Calendar, Stethoscope } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, Plus, Phone, Calendar, Stethoscope } from "lucide-react";
 import { toast } from "sonner";
-
-const doctorsData: {
-  id: string;
-  name: string;
-  specialization: string;
-  department: string;
-  contact: string;
-  email: string;
-  availability: string;
-  patients: number;
-}[] = [];
+import { getAllDoctors, createDoctor, deleteDoctor, Doctor } from "../services/api";
 
 export default function Doctors() {
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDepartment, setFilterDepartment] = useState("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   
+  // Fetch doctors from backend on mount
+  useEffect(() => {
+    fetchDoctors();
+  }, []);
+
+  const fetchDoctors = async () => {
+    setLoading(true);
+    setError(null);
+    const result = await getAllDoctors();
+    if (result.error) {
+      setError(result.error);
+      toast.error("Failed to load doctors", { description: result.error });
+    } else {
+      setDoctors(result.data || []);
+    }
+    setLoading(false);
+  };
+
   // Form state
   const [formData, setFormData] = useState({
     name: "",
@@ -28,22 +39,51 @@ export default function Doctors() {
     availability: "Available"
   });
 
-  const filteredDoctors = doctorsData.filter((doctor) => {
+  const filteredDoctors = doctors.filter((doctor) => {
     const matchesSearch =
-      doctor.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      doctor.specialization.toLowerCase().includes(searchTerm.toLowerCase());
+      doctor.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      doctor.specialization?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFilter = filterDepartment === "all" || doctor.department === filterDepartment;
     return matchesSearch && matchesFilter;
   });
 
   // Button Handlers
-  const handleAddDoctor = (e: React.FormEvent) => {
+  const handleAddDoctor = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("Doctor added successfully!", {
-      description: `Dr. ${formData.name} has been added to the system.`
-    });
-    setIsAddModalOpen(false);
-    setFormData({ name: "", specialization: "", department: "Cardiology", contact: "", email: "", availability: "Available" });
+    const doctorData = {
+      name: formData.name,
+      specialization: formData.specialization,
+      department: formData.department,
+      contact: formData.contact,
+      email: formData.email,
+      availability: formData.availability,
+      patients: 0
+    };
+    
+    const result = await createDoctor(doctorData);
+    if (result.error) {
+      toast.error("Failed to add doctor", { description: result.error });
+    } else {
+      toast.success("Doctor added successfully!", {
+        description: `Dr. ${formData.name} has been added to the system.`
+      });
+      setDoctors([...doctors, result.data!]);
+      setIsAddModalOpen(false);
+      setFormData({ name: "", specialization: "", department: "Cardiology", contact: "", email: "", availability: "Available" });
+    }
+  };
+
+  const handleDeleteDoctor = async (doctor: Doctor) => {
+    if (!doctor.id) return;
+    const result = await deleteDoctor(doctor.id);
+    if (result.error) {
+      toast.error("Failed to delete doctor", { description: result.error });
+    } else {
+      toast.success("Doctor deleted successfully!", {
+        description: `Dr. ${doctor.name} has been removed.`
+      });
+      setDoctors(doctors.filter(d => d.id !== doctor.id));
+    }
   };
 
   return (
@@ -70,7 +110,7 @@ export default function Doctors() {
             <div>
               <p className="text-sm text-gray-500 mb-1">Total Doctors</p>
               <h3 className="text-2xl font-bold text-[#111827]">
-                {doctorsData.length || "—"}
+                {loading ? "..." : doctors.length || "—"}
               </h3>
             </div>
             <Stethoscope className="w-8 h-8 text-blue-500" />
@@ -82,7 +122,7 @@ export default function Doctors() {
             <div>
               <p className="text-sm text-gray-500 mb-1">Available Today</p>
               <h3 className="text-2xl font-bold text-green-600">
-                {doctorsData.filter((d) => d.availability === "Available").length || "—"}
+                {loading ? "..." : doctors.filter((d) => d.availability === "Available").length || "—"}
               </h3>
             </div>
             <Calendar className="w-8 h-8 text-green-500" />
@@ -94,7 +134,7 @@ export default function Doctors() {
             <div>
               <p className="text-sm text-gray-500 mb-1">On Leave</p>
               <h3 className="text-2xl font-bold text-yellow-600">
-                {doctorsData.filter((d) => d.availability === "On Leave").length || "—"}
+                {loading ? "..." : doctors.filter((d) => d.availability === "On Leave").length || "—"}
               </h3>
             </div>
             <Calendar className="w-8 h-8 text-yellow-500" />
@@ -106,7 +146,7 @@ export default function Doctors() {
             <div>
               <p className="text-sm text-gray-500 mb-1">Total Patients</p>
               <h3 className="text-2xl font-bold text-[#111827]">
-                {doctorsData.reduce((sum, d) => sum + d.patients, 0) || "—"}
+                {loading ? "..." : doctors.reduce((sum, d) => sum + (d.patients || 0), 0) || "—"}
               </h3>
             </div>
             <Stethoscope className="w-8 h-8 text-purple-500" />
@@ -193,7 +233,7 @@ export default function Doctors() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {doctor.patients}
+                      {doctor.patients || 0}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span

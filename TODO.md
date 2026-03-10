@@ -1,48 +1,56 @@
-# Button Functionality Implementation - COMPLETED
+# Hospital Management System - Integration Plan
 
-## Task: Add button functionality to all buttons in the project
+## Task: Integrate Frontend with Backend and Connect to MySQL
 
-### Pages Updated:
-- [x] Login.tsx - Already has login functionality (no changes needed)
-- [x] Dashboard.tsx - No action buttons (no changes needed)
-- [x] Patients.tsx - Add Patient, Export, More Filters, Edit, Delete - ✅ COMPLETED
-- [x] Doctors.tsx - Add Doctor buttons - ✅ COMPLETED
-- [x] Appointments.tsx - New Appointment buttons - ✅ COMPLETED
-- [x] MedicalRecords.tsx - Upload, New Record, Download - ✅ COMPLETED
-- [x] Billing.tsx - New Invoice buttons - ✅ COMPLETED
-- [x] Pharmacy.tsx - Add Medicine, Restock, Dispense buttons - ✅ COMPLETED
-- [x] Reports.tsx - Date Range, Export Report - ✅ COMPLETED
-- [x] Settings.tsx - All settings buttons - ✅ COMPLETED
-- [x] RootLayout.tsx - Sidebar navigation (already working)
+### Implementation Status: ✅ COMPLETED
 
-### Implementation Summary:
-1. Added toast notifications (sonner) for user feedback on all button actions
-2. Added modal dialogs for create/edit forms in:
-   - Patients: Add, Edit, Delete confirmation
-   - Doctors: Add Doctor form
-   - Appointments: New Appointment form
-   - MedicalRecords: Upload and New Record forms
-   - Billing: New Invoice form
-   - Pharmacy: Add Medicine and Restock forms
-   - Settings: All form submissions
-3. Added interactive feedback for:
-   - Export buttons (show toast notification)
-   - Filter buttons (show info toast)
-   - Tab switches in Pharmacy
-   - Date Range selector in Reports
+#### Backend Controllers Created:
+- [x] PatientController - /api/patients
+- [x] DoctorController - /api/doctors
+- [x] AppointmentController - /api/appointments
+- [x] BillingController - /api/billings
+- [x] PharmacyController - /api/pharmacy
+- [x] MedicalRecordController - /api/medical-records
 
-### Additional Changes:
-- Added Toaster component to main.tsx for toast notifications
-- Installed @types/react-dom for TypeScript support
-- Fixed build warnings by adding code-splitting in vite.config.ts
-- Added manual chunks configuration to split vendor bundles
+#### Frontend API Service:
+- [x] Created frontend/src/app/services/api.ts with all CRUD operations for:
+  - Patients
+  - Doctors
+  - Appointments
+  - Billing
+  - Pharmacy (Medications)
+  - Medical Records
 
-### Build Status:
-- ✅ Build successful with no warnings
-- ✅ Code-split into multiple chunks for better performance:
-  - vendor-react.js (93.75 kB)
-  - vendor-charts.js (557.51 kB)
-  - vendor-lucide.js (15.74 kB)
-  - vendor-ui.js (1.05 kB)
-  - index.js (152.93 kB)
+#### Frontend Pages Updated:
+- [x] Patients.tsx - Connected to backend API
+- [x] Doctors.tsx - Connected to backend API
+- [x] Appointments.tsx - Connected to backend API
+- [x] Billing.tsx - Connected to backend API
+- [x] Pharmacy.tsx - Connected to backend API
+- [x] MedicalRecords.tsx - Connected to backend API
+
+### How to Run:
+
+1. **Start MySQL** - Ensure MySQL is running on localhost:3306 with credentials:
+   - Username: root
+   - Password: Suryas@1403@14
+   - Database: hospital_db (auto-created)
+
+2. **Start Backend** (Port 8080):
+   ```bash
+   cd backend
+   mvn spring-boot:run
+   ```
+
+3. **Start Frontend** (Port 5173):
+   ```bash
+   cd frontend
+   npm run dev
+   ```
+
+### Features Working:
+- ✅ All CRUD operations reflect in MySQL database
+- ✅ Live data fetching from backend
+- ✅ CORS configured for frontend-backend communication
+- ✅ Real-time updates when adding/editing/deleting records
 

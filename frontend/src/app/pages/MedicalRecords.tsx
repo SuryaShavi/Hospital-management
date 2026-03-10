@@ -1,69 +1,90 @@
-import { useState } from "react";
-import { Upload, Download, FileText, Search, Filter, Calendar, User } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Search, Plus, FileText, FolderOpen } from "lucide-react";
 import { toast } from "sonner";
-
-const medicalRecordsData: {
-  id: string;
-  patientName: string;
-  patientId: string;
-  recordType: string;
-  category: string;
-  date: string;
-  doctor: string;
-  status: string;
-}[] = [];
+import { getAllMedicalRecords, createMedicalRecord, deleteMedicalRecord, MedicalRecord as MedicalRecordType } from "../services/api";
 
 export default function MedicalRecords() {
+  const [records, setRecords] = useState<MedicalRecordType[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
-  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [isNewRecordModalOpen, setIsNewRecordModalOpen] = useState(false);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   
+  // Fetch medical records from backend on mount
+  useEffect(() => {
+    fetchRecords();
+  }, []);
+
+  const fetchRecords = async () => {
+    setLoading(true);
+    setError(null);
+    const result = await getAllMedicalRecords();
+    if (result.error) {
+      setError(result.error);
+      toast.error("Failed to load medical records", { description: result.error });
+    } else {
+      setRecords(result.data || []);
+    }
+    setLoading(false);
+  };
+
   // Form state
   const [formData, setFormData] = useState({
     patientName: "",
     patientId: "",
-    recordType: "",
-    category: "Lab Results",
+    recordType: "Diagnosis",
+    category: "General",
     date: "",
-    doctor: ""
+    doctor: "",
+    status: "Active"
   });
 
-  const filteredRecords = medicalRecordsData.filter((record) => {
+  const filteredRecords = records.filter((record) => {
     const matchesSearch =
-      record.patientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      record.id.toLowerCase().includes(searchTerm.toLowerCase());
+      record.patientName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      record.id?.toString().includes(searchTerm.toLowerCase());
     const matchesFilter = filterCategory === "all" || record.category === filterCategory;
     return matchesSearch && matchesFilter;
   });
 
   // Button Handlers
-  const handleUpload = () => {
-    setIsUploadModalOpen(true);
-  };
-
-  const handleUploadSubmit = (e: React.FormEvent) => {
+  const handleAddRecord = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success("File uploaded successfully!", {
-      description: "The medical record has been uploaded to the system."
-    });
-    setIsUploadModalOpen(false);
-    setFormData({ patientName: "", patientId: "", recordType: "", category: "Lab Results", date: "", doctor: "" });
+    const recordData = {
+      patientName: formData.patientName,
+      patientId: formData.patientId,
+      recordType: formData.recordType,
+      category: formData.category,
+      date: formData.date,
+      doctor: formData.doctor,
+      status: formData.status
+    };
+    
+    const result = await createMedicalRecord(recordData);
+    if (result.error) {
+      toast.error("Failed to add medical record", { description: result.error });
+    } else {
+      toast.success("Medical record added!", {
+        description: `Record for ${formData.patientName} has been created.`
+      });
+      setRecords([...records, result.data!]);
+      setIsAddModalOpen(false);
+      setFormData({ patientName: "", patientId: "", recordType: "Diagnosis", category: "General", date: "", doctor: "", status: "Active" });
+    }
   };
 
-  const handleNewRecord = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast.success("Medical record created!", {
-      description: `New ${formData.category} record for ${formData.patientName} has been created.`
-    });
-    setIsNewRecordModalOpen(false);
-    setFormData({ patientName: "", patientId: "", recordType: "", category: "Lab Results", date: "", doctor: "" });
-  };
-
-  const handleDownload = (record: typeof medicalRecordsData[0]) => {
-    toast.success("Download started!", {
-      description: `Downloading ${record.recordType} for ${record.patientName}`
-    });
+  const handleDeleteRecord = async (record: MedicalRecordType) => {
+    if (!record.id) return;
+    const result = await deleteMedicalRecord(record.id);
+    if (result.error) {
+      toast.error("Failed to delete medical record", { description: result.error });
+    } else {
+      toast.success("Medical record deleted!", {
+        description: `Record for ${record.patientName} has been removed.`
+      });
+      setRecords(records.filter(r => r.id !== record.id));
+    }
   };
 
   return (
@@ -72,24 +93,15 @@ export default function MedicalRecords() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-[#111827]">Medical Records</h1>
-          <p className="text-gray-500 mt-1">Manage patient medical records and documents</p>
+          <p className="text-gray-500 mt-1">Manage patient medical records and history</p>
         </div>
-        <div className="flex gap-2">
-          <button 
-            onClick={handleUpload}
-            className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            <Upload className="w-5 h-5" />
-            Upload
-          </button>
-          <button 
-            onClick={() => setIsNewRecordModalOpen(true)}
-            className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors"
-          >
-            <FileText className="w-5 h-5" />
-            New Record
-          </button>
-        </div>
+        <button 
+          onClick={() => setIsAddModalOpen(true)}
+          className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors"
+        >
+          <Plus className="w-5 h-5" />
+          Add Record
+        </button>
       </div>
 
       {/* Stats Cards */}
@@ -99,19 +111,19 @@ export default function MedicalRecords() {
             <div>
               <p className="text-sm text-gray-500 mb-1">Total Records</p>
               <h3 className="text-2xl font-bold text-[#111827]">
-                {medicalRecordsData.length || "—"}
+                {loading ? "..." : records.length || "—"}
               </h3>
             </div>
-            <FileText className="w-8 h-8 text-blue-500" />
+            <FolderOpen className="w-8 h-8 text-blue-500" />
           </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 mb-1">Lab Results</p>
+              <p className="text-sm text-gray-500 mb-1">Diagnosis</p>
               <h3 className="text-2xl font-bold text-green-600">
-                {medicalRecordsData.filter((r) => r.category === "Lab Results").length || "—"}
+                {loading ? "..." : records.filter((r) => r.recordType === "Diagnosis").length || "—"}
               </h3>
             </div>
             <FileText className="w-8 h-8 text-green-500" />
@@ -121,24 +133,24 @@ export default function MedicalRecords() {
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 mb-1">Prescriptions</p>
-              <h3 className="text-2xl font-bold text-yellow-600">
-                {medicalRecordsData.filter((r) => r.category === "Prescription").length || "—"}
+              <p className="text-sm text-gray-500 mb-1">Lab Reports</p>
+              <h3 className="text-2xl font-bold text-purple-600">
+                {loading ? "..." : records.filter((r) => r.recordType === "Lab Report").length || "—"}
               </h3>
             </div>
-            <FileText className="w-8 h-8 text-yellow-500" />
+            <FileText className="w-8 h-8 text-purple-500" />
           </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-500 mb-1">Imaging</p>
-              <h3 className="text-2xl font-bold text-purple-600">
-                {medicalRecordsData.filter((r) => r.category === "Imaging").length || "—"}
+              <p className="text-sm text-gray-500 mb-1">Prescriptions</p>
+              <h3 className="text-2xl font-bold text-yellow-600">
+                {loading ? "..." : records.filter((r) => r.recordType === "Prescription").length || "—"}
               </h3>
             </div>
-            <FileText className="w-8 h-8 text-purple-500" />
+            <FileText className="w-8 h-8 text-yellow-500" />
           </div>
         </div>
       </div>
@@ -150,7 +162,7 @@ export default function MedicalRecords() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
               type="text"
-              placeholder="Search records by patient name or ID..."
+              placeholder="Search medical records by patient name or ID..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -162,10 +174,10 @@ export default function MedicalRecords() {
             className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
           >
             <option value="all">All Categories</option>
-            <option value="Lab Results">Lab Results</option>
-            <option value="Prescription">Prescription</option>
-            <option value="Imaging">Imaging</option>
-            <option value="Consultation">Consultation</option>
+            <option value="General">General</option>
+            <option value="Cardiology">Cardiology</option>
+            <option value="Neurology">Neurology</option>
+            <option value="Orthopedics">Orthopedics</option>
           </select>
         </div>
       </div>
@@ -198,7 +210,7 @@ export default function MedicalRecords() {
                   Doctor
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Actions
+                  Status
                 </th>
               </tr>
             </thead>
@@ -218,24 +230,27 @@ export default function MedicalRecords() {
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {record.recordType}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">
-                        {record.category}
-                      </span>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                      {record.category}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {new Date(record.date).toLocaleDateString()}
+                      {record.date ? new Date(record.date).toLocaleDateString() : ""}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {record.doctor}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <button 
-                        onClick={() => handleDownload(record)}
-                        className="text-blue-600 hover:bg-blue-50 p-1 rounded transition-colors"
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span
+                        className={`px-2 py-1 text-xs font-medium rounded-full ${
+                          record.status === "Active"
+                            ? "bg-green-100 text-green-700"
+                            : record.status === "Archived"
+                            ? "bg-gray-100 text-gray-700"
+                            : "bg-yellow-100 text-yellow-700"
+                        }`}
                       >
-                        <Download className="w-4 h-4" />
-                      </button>
+                        {record.status}
+                      </span>
                     </td>
                   </tr>
                 ))
@@ -243,19 +258,19 @@ export default function MedicalRecords() {
                 <tr>
                   <td colSpan={8} className="px-6 py-12">
                     <div className="flex flex-col items-center justify-center text-center">
-                      <FileText className="w-16 h-16 text-gray-300 mb-4" />
+                      <FolderOpen className="w-16 h-16 text-gray-300 mb-4" />
                       <h3 className="text-lg font-medium text-gray-900 mb-1">
                         No medical records found
                       </h3>
                       <p className="text-sm text-gray-500 mb-4">
-                        Upload or create records to get started.
+                        Add medical records to start managing patient history.
                       </p>
                       <button 
-                        onClick={() => setIsNewRecordModalOpen(true)}
+                        onClick={() => setIsAddModalOpen(true)}
                         className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors"
                       >
-                        <Upload className="w-5 h-5" />
-                        Upload Record
+                        <Plus className="w-5 h-5" />
+                        Add Record
                       </button>
                     </div>
                   </td>
@@ -266,79 +281,12 @@ export default function MedicalRecords() {
         </div>
       </div>
 
-      {/* Upload Modal */}
-      {isUploadModalOpen && (
+      {/* Add Record Modal */}
+      {isAddModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
-            <h2 className="text-xl font-semibold text-[#111827] mb-4">Upload Medical Record</h2>
-            <form onSubmit={handleUploadSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Patient Name</label>
-                <input
-                  type="text"
-                  value={formData.patientName}
-                  onChange={(e) => setFormData({ ...formData, patientName: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Patient ID</label>
-                <input
-                  type="text"
-                  value={formData.patientId}
-                  onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                <select
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="Lab Results">Lab Results</option>
-                  <option value="Prescription">Prescription</option>
-                  <option value="Imaging">Imaging</option>
-                  <option value="Consultation">Consultation</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Upload File</label>
-                <input
-                  type="file"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setIsUploadModalOpen(false)}
-                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-[#2563EB] text-white rounded-lg hover:bg-[#1d4ed8] transition-colors"
-                >
-                  Upload
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* New Record Modal */}
-      {isNewRecordModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
-            <h2 className="text-xl font-semibold text-[#111827] mb-4">Create New Record</h2>
-            <form onSubmit={handleNewRecord} className="space-y-4">
+            <h2 className="text-xl font-semibold text-[#111827] mb-4">Add Medical Record</h2>
+            <form onSubmit={handleAddRecord} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Patient Name</label>
                 <input
@@ -361,14 +309,16 @@ export default function MedicalRecords() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Record Type</label>
-                <input
-                  type="text"
+                <select
                   value={formData.recordType}
                   onChange={(e) => setFormData({ ...formData, recordType: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="e.g., Blood Test, X-Ray"
-                  required
-                />
+                >
+                  <option value="Diagnosis">Diagnosis</option>
+                  <option value="Lab Report">Lab Report</option>
+                  <option value="Prescription">Prescription</option>
+                  <option value="Treatment">Treatment</option>
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
@@ -377,10 +327,10 @@ export default function MedicalRecords() {
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                 >
-                  <option value="Lab Results">Lab Results</option>
-                  <option value="Prescription">Prescription</option>
-                  <option value="Imaging">Imaging</option>
-                  <option value="Consultation">Consultation</option>
+                  <option value="General">General</option>
+                  <option value="Cardiology">Cardiology</option>
+                  <option value="Neurology">Neurology</option>
+                  <option value="Orthopedics">Orthopedics</option>
                 </select>
               </div>
               <div>
@@ -403,10 +353,21 @@ export default function MedicalRecords() {
                   required
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Active">Active</option>
+                  <option value="Archived">Archived</option>
+                </select>
+              </div>
               <div className="flex gap-3 pt-4">
                 <button
                   type="button"
-                  onClick={() => setIsNewRecordModalOpen(false)}
+                  onClick={() => setIsAddModalOpen(false)}
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                 >
                   Cancel
@@ -415,7 +376,7 @@ export default function MedicalRecords() {
                   type="submit"
                   className="flex-1 px-4 py-2 bg-[#2563EB] text-white rounded-lg hover:bg-[#1d4ed8] transition-colors"
                 >
-                  Create Record
+                  Add Record
                 </button>
               </div>
             </form>
