@@ -34,4 +34,15 @@
 ### Additional Changes:
 - Added Toaster component to main.tsx for toast notifications
 - Installed @types/react-dom for TypeScript support
+- Fixed build warnings by adding code-splitting in vite.config.ts
+- Added manual chunks configuration to split vendor bundles
+
+### Build Status:
+- ✅ Build successful with no warnings
+- ✅ Code-split into multiple chunks for better performance:
+  - vendor-react.js (93.75 kB)
+  - vendor-charts.js (557.51 kB)
+  - vendor-lucide.js (15.74 kB)
+  - vendor-ui.js (1.05 kB)
+  - index.js (152.93 kB)
 
