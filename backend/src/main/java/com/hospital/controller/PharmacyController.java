@@ -4,6 +4,7 @@ import com.hospital.model.Pharmacy;
 import com.hospital.service.PharmacyService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,11 +18,13 @@ public class PharmacyController {
     private PharmacyService pharmacyService;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'NURSE')")
     public List<Pharmacy> getAllMedications() {
         return pharmacyService.getAllMedications();
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'NURSE')")
     public ResponseEntity<Pharmacy> getMedicationById(@PathVariable Long id) {
         return pharmacyService.getMedicationById(id)
                 .map(ResponseEntity::ok)
@@ -29,11 +32,13 @@ public class PharmacyController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
     public Pharmacy createMedication(@RequestBody Pharmacy pharmacy) {
         return pharmacyService.saveMedication(pharmacy);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
     public ResponseEntity<Pharmacy> updateMedication(@PathVariable Long id, @RequestBody Pharmacy pharmacy) {
         return pharmacyService.getMedicationById(id)
                 .map(existingPharmacy -> {
@@ -44,6 +49,7 @@ public class PharmacyController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteMedication(@PathVariable Long id) {
         if (pharmacyService.getMedicationById(id).isPresent()) {
             pharmacyService.deleteMedication(id);

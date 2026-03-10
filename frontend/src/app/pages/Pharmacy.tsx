@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { Search, Plus, Pill, AlertCircle, PackagePlus } from "lucide-react";
+import { Search, Plus, Pill, AlertCircle, PackagePlus, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { getAllMedications, createMedication, deleteMedication, Pharmacy as PharmacyType } from "../services/api";
+import { getAllMedications, createMedication, updateMedication, deleteMedication, Pharmacy as PharmacyType } from "../services/api";
 
 export default function Pharmacy() {
   const [medications, setMedications] = useState<PharmacyType[]>([]);
@@ -10,6 +10,9 @@ export default function Pharmacy() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<"inventory" | "prescriptions">("inventory");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedMedication, setSelectedMedication] = useState<PharmacyType | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   
   // Fetch medications from backend on mount
   useEffect(() => {
@@ -231,10 +234,10 @@ export default function Pharmacy() {
                     Price
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Expiry Date
+                    Status
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
+                    Actions
                   </th>
                 </tr>
               </thead>
@@ -268,6 +271,34 @@ export default function Pharmacy() {
                         >
                           {med.status || "In Stock"}
                         </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => {
+                              setSelectedMedication(med);
+                              setFormData({
+                                name: med.name || "",
+                                category: med.category || "Antibiotics",
+                                stock: med.stock?.toString() || "",
+                                price: med.price?.toString() || "",
+                                expiryDate: med.expiryDate ? new Date(med.expiryDate).toISOString().split('T')[0] : ""
+                              });
+                              setIsEditModalOpen(true);
+                            }}
+                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            title="Edit"
+                          >
+                            <Pencil className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteMedication(med)}
+                            className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -385,6 +416,118 @@ export default function Pharmacy() {
                   className="flex-1 px-4 py-2 bg-[#2563EB] text-white rounded-lg hover:bg-[#1d4ed8] transition-colors"
                 >
                   Add Medicine
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Medicine Modal */}
+      {isEditModalOpen && selectedMedication && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+            <h2 className="text-xl font-semibold text-[#111827] mb-4">Edit Medicine</h2>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (!selectedMedication?.id) return;
+              setSubmitting(true);
+              const stockNum = parseInt(formData.stock);
+              const result = await updateMedication(selectedMedication.id, {
+                ...selectedMedication,
+                name: formData.name,
+                category: formData.category,
+                stock: stockNum,
+                price: parseFloat(formData.price),
+                expiryDate: formData.expiryDate,
+                status: getStockStatus(stockNum)
+              });
+              setSubmitting(false);
+              if (result.error) {
+                toast.error("Failed to update medicine", { description: result.error });
+              } else {
+                toast.success("Medicine updated successfully!", {
+                  description: `${formData.name} has been updated.`
+                });
+                setMedications(medications.map(m => m.id === selectedMedication.id ? result.data! : m));
+                setIsEditModalOpen(false);
+                setSelectedMedication(null);
+                setFormData({ name: "", category: "Antibiotics", stock: "", price: "", expiryDate: "" });
+              }
+            }} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Medicine Name</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <select
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Antibiotics">Antibiotics</option>
+                  <option value="Pain Relief">Pain Relief</option>
+                  <option value="Vitamins">Vitamins</option>
+                  <option value="Cardiology">Cardiology</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Stock (units)</label>
+                <input
+                  type="number"
+                  value={formData.stock}
+                  onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Price ($)</label>
+                <input
+                  type="number"
+                  value={formData.price}
+                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  step="0.01"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Expiry Date</label>
+                <input
+                  type="date"
+                  value={formData.expiryDate}
+                  onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setSelectedMedication(null);
+                    setFormData({ name: "", category: "Antibiotics", stock: "", price: "", expiryDate: "" });
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex-1 px-4 py-2 bg-[#2563EB] text-white rounded-lg hover:bg-[#1d4ed8] transition-colors disabled:opacity-50"
+                >
+                  {submitting ? "Updating..." : "Update Medicine"}
                 </button>
               </div>
             </form>

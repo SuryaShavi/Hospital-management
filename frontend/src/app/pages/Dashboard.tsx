@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { useSearchParams } from "react-router";
 import {
   Users,
   Stethoscope,
@@ -23,6 +25,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
+import { authApi, UserRole } from "../services/api";
 
 const stats = [
   {
@@ -73,12 +76,54 @@ const upcomingAppointments: { id: number; patient: string; doctor: string; time:
 const recentAdmissions: { id: number; patient: string; age: number; condition: string; status: string }[] = [];
 
 export default function Dashboard() {
+  const [searchParams] = useSearchParams();
+  const [showUnauthorized, setShowUnauthorized] = useState(false);
+  const user = authApi.getUser();
+
+  useEffect(() => {
+    if (searchParams.get("unauthorized") === "true") {
+      setShowUnauthorized(true);
+      // Hide the notification after 5 seconds
+      setTimeout(() => {
+        setShowUnauthorized(false);
+      }, 5000);
+    }
+  }, [searchParams]);
+
+  // Get role display name
+  const getRoleDisplayName = (role: string | undefined) => {
+    switch (role) {
+      case "ADMIN":
+        return "Administrator";
+      case "DOCTOR":
+        return "Doctor";
+      case "NURSE":
+        return "Nurse";
+      case "RECEPTIONIST":
+        return "Receptionist";
+      default:
+        return "User";
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Unauthorized Access Notification */}
+      {showUnauthorized && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium text-yellow-800">Access Restricted</p>
+            <p className="text-xs text-yellow-700">You don't have permission to access that page.</p>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-[#111827]">Dashboard</h1>
-        <p className="text-gray-500 mt-1">Welcome back, Dr. Admin</p>
+        <p className="text-gray-500 mt-1">Welcome back, {user?.name || "User"}</p>
+        <p className="text-sm text-gray-400">{getRoleDisplayName(user?.role)}</p>
       </div>
 
       {/* Statistics Cards */}

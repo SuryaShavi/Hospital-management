@@ -1,40 +1,78 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import {
   User,
   Bell,
   Lock,
   Building2,
   Users,
-  Globe,
   Save,
   Upload,
 } from "lucide-react";
 import { toast } from "sonner";
+import { authApi, AuthResponse } from "../services/api";
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState<
-    "profile" | "hospital" | "security" | "notifications" | "staff"
+    "profile" | "hospital" | "staff" | "security" | "notifications"
   >("profile");
+  
+  // Get current user from auth
+  const [currentUser, setCurrentUser] = useState<AuthResponse | null>(null);
 
-  // Form states
+  useEffect(() => {
+    const user = authApi.getUser();
+    setCurrentUser(user);
+  }, []);
+
+  // Form states - initialize with user data if available
   const [profileData, setProfileData] = useState({
-    firstName: "Dr. Admin",
-    lastName: "User",
-    email: "admin@healthcare.com",
-    phone: "+1 234 567 8900",
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    role: "",
     department: "Administration"
   });
 
+  // Update profile data when user is loaded
+  useEffect(() => {
+    if (currentUser) {
+      const nameParts = currentUser.name.split(" ");
+      const firstName = nameParts[0] || "";
+      const lastName = nameParts.slice(1).join(" ") || "";
+      
+      setProfileData({
+        firstName,
+        lastName,
+        email: currentUser.email,
+        phone: "",
+        role: currentUser.role,
+        department: "Administration"
+      });
+    }
+  }, [currentUser]);
+
+  // Hospital Info - empty state
   const [hospitalData, setHospitalData] = useState({
-    name: "HealthCare+ Hospital",
-    address: "123 Medical Center Drive",
-    city: "New York",
-    zipCode: "10001",
-    phone: "+1 234 567 8900",
-    email: "info@healthcare.com",
-    totalBeds: "200",
-    licenseNumber: "HOSP-2024-001"
+    name: "",
+    address: "",
+    city: "",
+    zipCode: "",
+    phone: "",
+    email: "",
+    totalBeds: "",
+    licenseNumber: ""
   });
+
+  // Staff Accounts - empty state
+  const [staffAccounts, setStaffAccounts] = useState<Array<{
+    id: number;
+    name: string;
+    role: string;
+    email: string;
+    status: string;
+  }>>([]);
 
   const [securityData, setSecurityData] = useState({
     currentPassword: "",
@@ -110,6 +148,18 @@ export default function Settings() {
     toast.info("Edit staff", {
       description: `Editing ${name}'s account.`
     });
+  };
+
+  // Get initials for avatar
+  const getInitials = () => {
+    if (currentUser?.name) {
+      const parts = currentUser.name.split(" ");
+      if (parts.length >= 2) {
+        return (parts[0][0] + parts[1][0]).toUpperCase();
+      }
+      return currentUser.name.substring(0, 2).toUpperCase();
+    }
+    return "U";
   };
 
   return (
@@ -194,7 +244,7 @@ export default function Settings() {
                 {/* Profile Picture */}
                 <div className="flex items-center gap-6">
                   <div className="w-24 h-24 bg-[#2563EB] rounded-full flex items-center justify-center text-white text-3xl font-bold">
-                    DA
+                    {getInitials()}
                   </div>
                   <div>
                     <button 
@@ -250,6 +300,7 @@ export default function Settings() {
                         type="tel"
                         value={profileData.phone}
                         onChange={(e) => setProfileData({ ...profileData, phone: e.target.value })}
+                        placeholder="Enter phone number"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
                       />
                     </div>
@@ -257,7 +308,7 @@ export default function Settings() {
                       <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
                       <input
                         type="text"
-                        placeholder="Administrator"
+                        value={profileData.role}
                         disabled
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-100 text-gray-500"
                       />
@@ -310,6 +361,7 @@ export default function Settings() {
                         type="text"
                         value={hospitalData.name}
                         onChange={(e) => setHospitalData({ ...hospitalData, name: e.target.value })}
+                        placeholder="Enter hospital name"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
                       />
                     </div>
@@ -321,6 +373,7 @@ export default function Settings() {
                         type="text"
                         value={hospitalData.address}
                         onChange={(e) => setHospitalData({ ...hospitalData, address: e.target.value })}
+                        placeholder="Enter hospital address"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
                       />
                     </div>
@@ -330,6 +383,7 @@ export default function Settings() {
                         type="text"
                         value={hospitalData.city}
                         onChange={(e) => setHospitalData({ ...hospitalData, city: e.target.value })}
+                        placeholder="Enter city"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
                       />
                     </div>
@@ -341,6 +395,7 @@ export default function Settings() {
                         type="text"
                         value={hospitalData.zipCode}
                         onChange={(e) => setHospitalData({ ...hospitalData, zipCode: e.target.value })}
+                        placeholder="Enter zip code"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
                       />
                     </div>
@@ -350,6 +405,7 @@ export default function Settings() {
                         type="tel"
                         value={hospitalData.phone}
                         onChange={(e) => setHospitalData({ ...hospitalData, phone: e.target.value })}
+                        placeholder="Enter phone number"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
                       />
                     </div>
@@ -359,6 +415,7 @@ export default function Settings() {
                         type="email"
                         value={hospitalData.email}
                         onChange={(e) => setHospitalData({ ...hospitalData, email: e.target.value })}
+                        placeholder="Enter email"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
                       />
                     </div>
@@ -370,6 +427,7 @@ export default function Settings() {
                         type="number"
                         value={hospitalData.totalBeds}
                         onChange={(e) => setHospitalData({ ...hospitalData, totalBeds: e.target.value })}
+                        placeholder="Enter total beds"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
                       />
                     </div>
@@ -381,6 +439,7 @@ export default function Settings() {
                         type="text"
                         value={hospitalData.licenseNumber}
                         onChange={(e) => setHospitalData({ ...hospitalData, licenseNumber: e.target.value })}
+                        placeholder="Enter license number"
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
                       />
                     </div>
@@ -412,71 +471,59 @@ export default function Settings() {
                   </button>
                 </div>
 
-                <div className="border border-gray-200 rounded-lg overflow-hidden">
-                  <table className="w-full">
-                    <thead className="bg-gray-50">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                          Name
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                          Role
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                          Email
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                          Status
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                          Actions
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-200">
-                      <tr>
-                        <td className="px-4 py-3 text-sm text-[#111827]">Dr. Sarah Wilson</td>
-                        <td className="px-4 py-3 text-sm text-gray-500">Doctor</td>
-                        <td className="px-4 py-3 text-sm text-gray-500">
-                          sarah.wilson@healthcare.com
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">
-                            Active
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          <button 
-                            onClick={() => handleEditStaff("Dr. Sarah Wilson")}
-                            className="text-blue-600 hover:underline"
-                          >
-                            Edit
-                          </button>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="px-4 py-3 text-sm text-[#111827]">Nurse Jane Doe</td>
-                        <td className="px-4 py-3 text-sm text-gray-500">Nurse</td>
-                        <td className="px-4 py-3 text-sm text-gray-500">
-                          jane.doe@healthcare.com
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">
-                            Active
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-sm">
-                          <button 
-                            onClick={() => handleEditStaff("Nurse Jane Doe")}
-                            className="text-blue-600 hover:underline"
-                          >
-                            Edit
-                          </button>
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                {staffAccounts.length === 0 ? (
+                  <div className="text-center py-12 text-gray-500">
+                    <Users className="w-12 h-12 mx-auto mb-4 text-gray-300" />
+                    <p>No staff accounts yet.</p>
+                    <p className="text-sm">Click "Add Staff" to create one.</p>
+                  </div>
+                ) : (
+                  <div className="border border-gray-200 rounded-lg overflow-hidden">
+                    <table className="w-full">
+                      <thead className="bg-gray-50">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            Name
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            Role
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            Email
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            Status
+                          </th>
+                          <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {staffAccounts.map((staff) => (
+                          <tr key={staff.id}>
+                            <td className="px-4 py-3 text-sm text-[#111827]">{staff.name}</td>
+                            <td className="px-4 py-3 text-sm text-gray-500">{staff.role}</td>
+                            <td className="px-4 py-3 text-sm text-gray-500">{staff.email}</td>
+                            <td className="px-4 py-3">
+                              <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-100 text-green-700">
+                                {staff.status}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3 text-sm">
+                              <button 
+                                onClick={() => handleEditStaff(staff.name)}
+                                className="text-blue-600 hover:underline"
+                              >
+                                Edit
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
 

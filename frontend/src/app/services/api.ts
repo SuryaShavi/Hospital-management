@@ -1,5 +1,144 @@
 // Backend API base URL
 const API_BASE_URL = 'http://localhost:8080/api';
+const AUTH_API_URL = 'http://localhost:8080/api/auth';
+
+// ============== Auth Types ==============
+export interface LoginRequest {
+  email: string;
+  password: string;
+}
+
+export interface RegisterRequest {
+  name: string;
+  email: string;
+  password: string;
+  role: 'ADMIN' | 'DOCTOR' | 'NURSE' | 'RECEPTIONIST';
+}
+
+export interface AuthResponse {
+  token: string;
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+}
+
+// ============== Role Types ==============
+export type UserRole = 'ADMIN' | 'DOCTOR' | 'NURSE' | 'RECEPTIONIST';
+
+// Role-based page access permissions
+export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
+  ADMIN: ['dashboard', 'patients', 'doctors', 'appointments', 'medical-records', 'billing', 'pharmacy', 'reports', 'settings'],
+  DOCTOR: ['dashboard', 'patients', 'appointments', 'medical-records', 'pharmacy', 'billing'],
+  NURSE: ['dashboard', 'patients', 'appointments', 'pharmacy'],
+  RECEPTIONIST: ['dashboard', 'appointments', 'billing'],
+};
+
+// Check if user has permission to access a specific route
+export const hasPermission = (role: UserRole | undefined, route: string): boolean => {
+  if (!role) return false;
+  return ROLE_PERMISSIONS[role]?.includes(route) ?? false;
+};
+
+// Get allowed routes for a user role
+export const getAllowedRoutes = (role: UserRole | undefined): string[] => {
+  if (!role) return [];
+  return ROLE_PERMISSIONS[role] ?? [];
+};
+
+// Store auth data in localStorage
+const TOKEN_KEY = 'auth_token';
+const USER_KEY = 'auth_user';
+
+export const authApi = {
+  login: async (credentials: LoginRequest): Promise<{ data?: AuthResponse; error?: string }> => {
+    try {
+      const response = await fetch(`${AUTH_API_URL}/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Login failed');
+      }
+      const data: AuthResponse = await response.json();
+      localStorage.setItem(TOKEN_KEY, data.token);
+      localStorage.setItem(USER_KEY, JSON.stringify(data));
+      return { data };
+    } catch (error) {
+      console.error('Login error:', error);
+      return { error: error instanceof Error ? error.message : 'Login failed' };
+    }
+  },
+
+  register: async (userData: RegisterRequest): Promise<{ data?: AuthResponse; error?: string }> => {
+    try {
+      const response = await fetch(`${AUTH_API_URL}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(userData),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Registration failed');
+      }
+      const data: AuthResponse = await response.json();
+      localStorage.setItem(TOKEN_KEY, data.token);
+      localStorage.setItem(USER_KEY, JSON.stringify(data));
+      return { data };
+    } catch (error) {
+      console.error('Registration error:', error);
+      return { error: error instanceof Error ? error.message : 'Registration failed' };
+    }
+  },
+
+  logout: () => {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
+  },
+
+  getToken: (): string | null => {
+    return localStorage.getItem(TOKEN_KEY);
+  },
+
+  getUser: (): AuthResponse | null => {
+    const userStr = localStorage.getItem(USER_KEY);
+    return userStr ? JSON.parse(userStr) : null;
+  },
+
+  isAuthenticated: (): boolean => {
+    return !!localStorage.getItem(TOKEN_KEY);
+  },
+};
+
+// Helper function to get auth headers
+const getAuthHeaders = (): HeadersInit => {
+  const token = authApi.getToken();
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+};
+
+// Handle API response errors including 403 Forbidden
+const handleResponse = async <T>(response: Response): Promise<{ data?: T; error?: string }> => {
+  if (response.status === 403) {
+    return { error: 'Access denied. You do not have permission to perform this action.' };
+  }
+  if (response.status === 401) {
+    // Token expired or invalid - clear auth and redirect to login
+    authApi.logout();
+    window.location.href = '/login';
+    return { error: 'Session expired. Please login again.' };
+  }
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({ message: 'An error occurred' }));
+    return { error: error.message || `HTTP error! status: ${response.status}` };
+  }
+  const data = await response.json();
+  return { data };
+};
 
 // ============== Patient ==============
 export interface Patient {
@@ -82,7 +221,9 @@ interface ApiResponse<T> {
 // ============== Patient API ==============
 export async function getAllPatients(): Promise<ApiResponse<Patient[]>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/patients`);
+    const response = await fetch(`${API_BASE_URL}/patients`, {
+      headers: getAuthHeaders(),
+    });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     const data = await response.json();
     return { data };
@@ -96,7 +237,7 @@ export async function createPatient(patient: Omit<Patient, 'id'>): Promise<ApiRe
   try {
     const response = await fetch(`${API_BASE_URL}/patients`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(patient),
     });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -112,7 +253,7 @@ export async function updatePatient(id: number, patient: Patient): Promise<ApiRe
   try {
     const response = await fetch(`${API_BASE_URL}/patients/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(patient),
     });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -126,7 +267,10 @@ export async function updatePatient(id: number, patient: Patient): Promise<ApiRe
 
 export async function deletePatient(id: number): Promise<ApiResponse<void>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/patients/${id}`, { method: 'DELETE' });
+    const response = await fetch(`${API_BASE_URL}/patients/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     return { data: undefined };
   } catch (error) {
@@ -138,7 +282,9 @@ export async function deletePatient(id: number): Promise<ApiResponse<void>> {
 // ============== Doctor API ==============
 export async function getAllDoctors(): Promise<ApiResponse<Doctor[]>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/doctors`);
+    const response = await fetch(`${API_BASE_URL}/doctors`, {
+      headers: getAuthHeaders(),
+    });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     const data = await response.json();
     return { data };
@@ -152,7 +298,7 @@ export async function createDoctor(doctor: Omit<Doctor, 'id'>): Promise<ApiRespo
   try {
     const response = await fetch(`${API_BASE_URL}/doctors`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(doctor),
     });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -168,7 +314,7 @@ export async function updateDoctor(id: number, doctor: Doctor): Promise<ApiRespo
   try {
     const response = await fetch(`${API_BASE_URL}/doctors/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(doctor),
     });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -182,7 +328,10 @@ export async function updateDoctor(id: number, doctor: Doctor): Promise<ApiRespo
 
 export async function deleteDoctor(id: number): Promise<ApiResponse<void>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/doctors/${id}`, { method: 'DELETE' });
+    const response = await fetch(`${API_BASE_URL}/doctors/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     return { data: undefined };
   } catch (error) {
@@ -194,7 +343,9 @@ export async function deleteDoctor(id: number): Promise<ApiResponse<void>> {
 // ============== Appointment API ==============
 export async function getAllAppointments(): Promise<ApiResponse<Appointment[]>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/appointments`);
+    const response = await fetch(`${API_BASE_URL}/appointments`, {
+      headers: getAuthHeaders(),
+    });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     const data = await response.json();
     return { data };
@@ -208,7 +359,7 @@ export async function createAppointment(appointment: Omit<Appointment, 'id'>): P
   try {
     const response = await fetch(`${API_BASE_URL}/appointments`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(appointment),
     });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -224,7 +375,7 @@ export async function updateAppointment(id: number, appointment: Appointment): P
   try {
     const response = await fetch(`${API_BASE_URL}/appointments/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(appointment),
     });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -238,7 +389,10 @@ export async function updateAppointment(id: number, appointment: Appointment): P
 
 export async function deleteAppointment(id: number): Promise<ApiResponse<void>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/appointments/${id}`, { method: 'DELETE' });
+    const response = await fetch(`${API_BASE_URL}/appointments/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     return { data: undefined };
   } catch (error) {
@@ -250,7 +404,9 @@ export async function deleteAppointment(id: number): Promise<ApiResponse<void>> 
 // ============== Billing API ==============
 export async function getAllBillings(): Promise<ApiResponse<Billing[]>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/billings`);
+    const response = await fetch(`${API_BASE_URL}/billings`, {
+      headers: getAuthHeaders(),
+    });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     const data = await response.json();
     return { data };
@@ -264,7 +420,7 @@ export async function createBilling(billing: Omit<Billing, 'id'>): Promise<ApiRe
   try {
     const response = await fetch(`${API_BASE_URL}/billings`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(billing),
     });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -280,7 +436,7 @@ export async function updateBilling(id: number, billing: Billing): Promise<ApiRe
   try {
     const response = await fetch(`${API_BASE_URL}/billings/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(billing),
     });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -294,7 +450,10 @@ export async function updateBilling(id: number, billing: Billing): Promise<ApiRe
 
 export async function deleteBilling(id: number): Promise<ApiResponse<void>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/billings/${id}`, { method: 'DELETE' });
+    const response = await fetch(`${API_BASE_URL}/billings/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     return { data: undefined };
   } catch (error) {
@@ -306,7 +465,9 @@ export async function deleteBilling(id: number): Promise<ApiResponse<void>> {
 // ============== Pharmacy API ==============
 export async function getAllMedications(): Promise<ApiResponse<Pharmacy[]>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/pharmacy`);
+    const response = await fetch(`${API_BASE_URL}/pharmacy`, {
+      headers: getAuthHeaders(),
+    });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     const data = await response.json();
     return { data };
@@ -320,7 +481,7 @@ export async function createMedication(pharmacy: Omit<Pharmacy, 'id'>): Promise<
   try {
     const response = await fetch(`${API_BASE_URL}/pharmacy`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(pharmacy),
     });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -336,7 +497,7 @@ export async function updateMedication(id: number, pharmacy: Pharmacy): Promise<
   try {
     const response = await fetch(`${API_BASE_URL}/pharmacy/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(pharmacy),
     });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -350,7 +511,10 @@ export async function updateMedication(id: number, pharmacy: Pharmacy): Promise<
 
 export async function deleteMedication(id: number): Promise<ApiResponse<void>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/pharmacy/${id}`, { method: 'DELETE' });
+    const response = await fetch(`${API_BASE_URL}/pharmacy/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     return { data: undefined };
   } catch (error) {
@@ -362,7 +526,9 @@ export async function deleteMedication(id: number): Promise<ApiResponse<void>> {
 // ============== Medical Record API ==============
 export async function getAllMedicalRecords(): Promise<ApiResponse<MedicalRecord[]>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/medical-records`);
+    const response = await fetch(`${API_BASE_URL}/medical-records`, {
+      headers: getAuthHeaders(),
+    });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     const data = await response.json();
     return { data };
@@ -376,7 +542,7 @@ export async function createMedicalRecord(record: Omit<MedicalRecord, 'id'>): Pr
   try {
     const response = await fetch(`${API_BASE_URL}/medical-records`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(record),
     });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -392,7 +558,7 @@ export async function updateMedicalRecord(id: number, record: MedicalRecord): Pr
   try {
     const response = await fetch(`${API_BASE_URL}/medical-records/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: getAuthHeaders(),
       body: JSON.stringify(record),
     });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -406,7 +572,10 @@ export async function updateMedicalRecord(id: number, record: MedicalRecord): Pr
 
 export async function deleteMedicalRecord(id: number): Promise<ApiResponse<void>> {
   try {
-    const response = await fetch(`${API_BASE_URL}/medical-records/${id}`, { method: 'DELETE' });
+    const response = await fetch(`${API_BASE_URL}/medical-records/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+    });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
     return { data: undefined };
   } catch (error) {
@@ -414,4 +583,3 @@ export async function deleteMedicalRecord(id: number): Promise<ApiResponse<void>
     return { error: error instanceof Error ? error.message : 'Failed to delete medical record' };
   }
 }
-

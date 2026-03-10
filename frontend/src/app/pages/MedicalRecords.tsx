@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { Search, Plus, FileText, FolderOpen } from "lucide-react";
+import { Search, Plus, FileText, FolderOpen, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { getAllMedicalRecords, createMedicalRecord, deleteMedicalRecord, MedicalRecord as MedicalRecordType } from "../services/api";
+import { getAllMedicalRecords, createMedicalRecord, updateMedicalRecord, deleteMedicalRecord, MedicalRecord as MedicalRecordType } from "../services/api";
 
 export default function MedicalRecords() {
   const [records, setRecords] = useState<MedicalRecordType[]>([]);
@@ -10,6 +10,9 @@ export default function MedicalRecords() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState<MedicalRecordType | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   
   // Fetch medical records from backend on mount
   useEffect(() => {
@@ -212,6 +215,9 @@ export default function MedicalRecords() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -251,6 +257,36 @@ export default function MedicalRecords() {
                       >
                         {record.status}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            setSelectedRecord(record);
+                            setFormData({
+                              patientName: record.patientName || "",
+                              patientId: record.patientId || "",
+                              recordType: record.recordType || "Diagnosis",
+                              category: record.category || "General",
+                              date: record.date ? new Date(record.date).toISOString().split('T')[0] : "",
+                              doctor: record.doctor || "",
+                              status: record.status || "Active"
+                            });
+                            setIsEditModalOpen(true);
+                          }}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Edit"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteRecord(record)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -377,6 +413,140 @@ export default function MedicalRecords() {
                   className="flex-1 px-4 py-2 bg-[#2563EB] text-white rounded-lg hover:bg-[#1d4ed8] transition-colors"
                 >
                   Add Record
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Record Modal */}
+      {isEditModalOpen && selectedRecord && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+            <h2 className="text-xl font-semibold text-[#111827] mb-4">Edit Medical Record</h2>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (!selectedRecord?.id) return;
+              setSubmitting(true);
+              const result = await updateMedicalRecord(selectedRecord.id, {
+                ...selectedRecord,
+                patientName: formData.patientName,
+                patientId: formData.patientId,
+                recordType: formData.recordType,
+                category: formData.category,
+                date: formData.date,
+                doctor: formData.doctor,
+                status: formData.status
+              });
+              setSubmitting(false);
+              if (result.error) {
+                toast.error("Failed to update medical record", { description: result.error });
+              } else {
+                toast.success("Medical record updated successfully!", {
+                  description: `Record for ${formData.patientName} has been updated.`
+                });
+                setRecords(records.map(r => r.id === selectedRecord.id ? result.data! : r));
+                setIsEditModalOpen(false);
+                setSelectedRecord(null);
+                setFormData({ patientName: "", patientId: "", recordType: "Diagnosis", category: "General", date: "", doctor: "", status: "Active" });
+              }
+            }} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Patient Name</label>
+                <input
+                  type="text"
+                  value={formData.patientName}
+                  onChange={(e) => setFormData({ ...formData, patientName: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Patient ID</label>
+                <input
+                  type="text"
+                  value={formData.patientId}
+                  onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Record Type</label>
+                <select
+                  value={formData.recordType}
+                  onChange={(e) => setFormData({ ...formData, recordType: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Diagnosis">Diagnosis</option>
+                  <option value="Lab Report">Lab Report</option>
+                  <option value="Prescription">Prescription</option>
+                  <option value="Treatment">Treatment</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <select
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="General">General</option>
+                  <option value="Cardiology">Cardiology</option>
+                  <option value="Neurology">Neurology</option>
+                  <option value="Orthopedics">Orthopedics</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                <input
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Doctor</label>
+                <input
+                  type="text"
+                  value={formData.doctor}
+                  onChange={(e) => setFormData({ ...formData, doctor: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Active">Active</option>
+                  <option value="Archived">Archived</option>
+                </select>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setSelectedRecord(null);
+                    setFormData({ patientName: "", patientId: "", recordType: "Diagnosis", category: "General", date: "", doctor: "", status: "Active" });
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex-1 px-4 py-2 bg-[#2563EB] text-white rounded-lg hover:bg-[#1d4ed8] transition-colors disabled:opacity-50"
+                >
+                  {submitting ? "Updating..." : "Update Record"}
                 </button>
               </div>
             </form>

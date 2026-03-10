@@ -4,6 +4,7 @@ import com.hospital.model.Appointment;
 import com.hospital.service.AppointmentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,11 +18,13 @@ public class AppointmentController {
     private AppointmentService appointmentService;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'RECEPTIONIST')")
     public List<Appointment> getAllAppointments() {
         return appointmentService.getAllAppointments();
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'RECEPTIONIST')")
     public ResponseEntity<Appointment> getAppointmentById(@PathVariable Long id) {
         return appointmentService.getAppointmentById(id)
                 .map(ResponseEntity::ok)
@@ -29,11 +32,13 @@ public class AppointmentController {
     }
 
     @PostMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'RECEPTIONIST')")
     public Appointment createAppointment(@RequestBody Appointment appointment) {
         return appointmentService.saveAppointment(appointment);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'RECEPTIONIST')")
     public ResponseEntity<Appointment> updateAppointment(@PathVariable Long id, @RequestBody Appointment appointment) {
         return appointmentService.getAppointmentById(id)
                 .map(existingAppointment -> {
@@ -44,6 +49,7 @@ public class AppointmentController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
     public ResponseEntity<Void> deleteAppointment(@PathVariable Long id) {
         if (appointmentService.getAppointmentById(id).isPresent()) {
             appointmentService.deleteAppointment(id);

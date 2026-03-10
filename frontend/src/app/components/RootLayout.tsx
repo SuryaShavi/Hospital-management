@@ -1,5 +1,5 @@
-import { Outlet, useNavigate, useLocation } from "react-router";
-import { useState } from "react";
+import { Outlet, useNavigate, useLocation, useSearchParams } from "react-router";
+import { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   Users,
@@ -17,25 +17,49 @@ import {
   Bell,
   User,
 } from "lucide-react";
+import { authApi, getAllowedRoutes, UserRole } from "../services/api";
 
-const navigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Patients", href: "/patients", icon: Users },
-  { name: "Doctors", href: "/doctors", icon: Stethoscope },
-  { name: "Appointments", href: "/appointments", icon: Calendar },
-  { name: "Medical Records", href: "/medical-records", icon: FileText },
-  { name: "Billing", href: "/billing", icon: CreditCard },
-  { name: "Pharmacy", href: "/pharmacy", icon: Pill },
-  { name: "Reports", href: "/reports", icon: BarChart3 },
-  { name: "Settings", href: "/settings", icon: Settings },
+// Navigation items with their route keys
+const allNavigation = [
+  { name: "Dashboard", href: "/", icon: LayoutDashboard, routeKey: "dashboard" },
+  { name: "Patients", href: "/patients", icon: Users, routeKey: "patients" },
+  { name: "Doctors", href: "/doctors", icon: Stethoscope, routeKey: "doctors" },
+  { name: "Appointments", href: "/appointments", icon: Calendar, routeKey: "appointments" },
+  { name: "Medical Records", href: "/medical-records", icon: FileText, routeKey: "medical-records" },
+  { name: "Billing", href: "/billing", icon: CreditCard, routeKey: "billing" },
+  { name: "Pharmacy", href: "/pharmacy", icon: Pill, routeKey: "pharmacy" },
+  { name: "Reports", href: "/reports", icon: BarChart3, routeKey: "reports" },
+  { name: "Settings", href: "/settings", icon: Settings, routeKey: "settings" },
 ];
 
 export function RootLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  
+  // Get current user and their role
+  const user = authApi.getUser();
+  const userRole = user?.role as UserRole | undefined;
+  const allowedRoutes = getAllowedRoutes(userRole);
+  
+  // Filter navigation based on user role
+  const navigation = allNavigation.filter(
+    (item) => allowedRoutes.includes(item.routeKey)
+  );
+
+  // Show unauthorized message if redirected
+  const isUnauthorized = searchParams.get("unauthorized") === "true";
+
+  useEffect(() => {
+    if (isUnauthorized) {
+      // Clear the query param after showing the message
+      navigate(location.pathname, { replace: true });
+    }
+  }, [isUnauthorized, navigate, location.pathname]);
 
   const handleLogout = () => {
+    authApi.logout();
     navigate("/login");
   };
 
@@ -44,6 +68,22 @@ export function RootLayout() {
       return location.pathname === "/";
     }
     return location.pathname.startsWith(href);
+  };
+
+  // Get role display name
+  const getRoleDisplayName = (role: string | undefined) => {
+    switch (role) {
+      case "ADMIN":
+        return "Administrator";
+      case "DOCTOR":
+        return "Doctor";
+      case "NURSE":
+        return "Nurse";
+      case "RECEPTIONIST":
+        return "Receptionist";
+      default:
+        return "User";
+    }
   };
 
   return (
@@ -178,8 +218,8 @@ export function RootLayout() {
                 <User className="w-5 h-5 text-white" />
               </div>
               <div className="hidden sm:block">
-                <p className="text-sm font-medium text-[#111827]">Dr. Admin</p>
-                <p className="text-xs text-gray-500">Administrator</p>
+                <p className="text-sm font-medium text-[#111827]">{user?.name || "User"}</p>
+                <p className="text-xs text-gray-500">{getRoleDisplayName(user?.role)}</p>
               </div>
             </div>
           </div>

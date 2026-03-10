@@ -2,8 +2,10 @@ package com.hospital.controller;
 
 import com.hospital.model.Patient;
 import com.hospital.service.PatientService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -17,11 +19,13 @@ public class PatientController {
     private PatientService patientService;
 
     @GetMapping
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'NURSE')")
     public List<Patient> getAllPatients() {
         return patientService.getAllPatients();
     }
 
     @GetMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'NURSE')")
     public ResponseEntity<Patient> getPatientById(@PathVariable Long id) {
         return patientService.getPatientById(id)
                 .map(ResponseEntity::ok)
@@ -29,11 +33,13 @@ public class PatientController {
     }
 
     @PostMapping
-    public Patient createPatient(@RequestBody Patient patient) {
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'NURSE')")
+    public Patient createPatient(@Valid @RequestBody Patient patient) {
         return patientService.savePatient(patient);
     }
 
     @PutMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'NURSE')")
     public ResponseEntity<Patient> updatePatient(@PathVariable Long id, @RequestBody Patient patient) {
         return patientService.getPatientById(id)
                 .map(existingPatient -> {
@@ -44,6 +50,7 @@ public class PatientController {
     }
 
     @DeleteMapping("/{id}")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
     public ResponseEntity<Void> deletePatient(@PathVariable Long id) {
         if (patientService.getPatientById(id).isPresent()) {
             patientService.deletePatient(id);

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { Search, Plus, Phone, Calendar, Stethoscope } from "lucide-react";
+import { Search, Plus, Phone, Calendar, Stethoscope, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { getAllDoctors, createDoctor, deleteDoctor, Doctor } from "../services/api";
+import { getAllDoctors, createDoctor, updateDoctor, deleteDoctor, Doctor } from "../services/api";
 
 export default function Doctors() {
   const [doctors, setDoctors] = useState<Doctor[]>([]);
@@ -10,6 +10,9 @@ export default function Doctors() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDepartment, setFilterDepartment] = useState("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
+  const [submitting, setSubmitting] = useState(false);
   
   // Fetch doctors from backend on mount
   useEffect(() => {
@@ -208,6 +211,9 @@ export default function Doctors() {
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Availability
                 </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
@@ -247,6 +253,35 @@ export default function Doctors() {
                       >
                         {doctor.availability}
                       </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => {
+                            setSelectedDoctor(doctor);
+                            setFormData({
+                              name: doctor.name || "",
+                              specialization: doctor.specialization || "",
+                              department: doctor.department || "Cardiology",
+                              contact: doctor.contact || "",
+                              email: doctor.email || "",
+                              availability: doctor.availability || "Available"
+                            });
+                            setIsEditModalOpen(true);
+                          }}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="Edit"
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteDoctor(doctor)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                          title="Delete"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))
@@ -366,6 +401,132 @@ export default function Doctors() {
                   className="flex-1 px-4 py-2 bg-[#2563EB] text-white rounded-lg hover:bg-[#1d4ed8] transition-colors"
                 >
                   Add Doctor
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Doctor Modal */}
+      {isEditModalOpen && selectedDoctor && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+            <h2 className="text-xl font-semibold text-[#111827] mb-4">Edit Doctor</h2>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              if (!selectedDoctor?.id) return;
+              setSubmitting(true);
+              const result = await updateDoctor(selectedDoctor.id, {
+                ...selectedDoctor,
+                name: formData.name,
+                specialization: formData.specialization,
+                department: formData.department,
+                contact: formData.contact,
+                email: formData.email,
+                availability: formData.availability
+              });
+              setSubmitting(false);
+              if (result.error) {
+                toast.error("Failed to update doctor", { description: result.error });
+              } else {
+                toast.success("Doctor updated successfully!", {
+                  description: `Dr. ${formData.name} has been updated.`
+                });
+                setDoctors(doctors.map(d => d.id === selectedDoctor.id ? result.data! : d));
+                setIsEditModalOpen(false);
+                setSelectedDoctor(null);
+                setFormData({ name: "", specialization: "", department: "Cardiology", contact: "", email: "", availability: "Available" });
+              }
+            }} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="Dr. John Smith"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Specialization</label>
+                <input
+                  type="text"
+                  value={formData.specialization}
+                  onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="Cardiologist"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                <select
+                  value={formData.department}
+                  onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Cardiology">Cardiology</option>
+                  <option value="Neurology">Neurology</option>
+                  <option value="Orthopedics">Orthopedics</option>
+                  <option value="Pediatrics">Pediatrics</option>
+                  <option value="General Medicine">General Medicine</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Contact</label>
+                <input
+                  type="tel"
+                  value={formData.contact}
+                  onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="+1 234 567 8900"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="doctor@hospital.com"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Availability</label>
+                <select
+                  value={formData.availability}
+                  onChange={(e) => setFormData({ ...formData, availability: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Available">Available</option>
+                  <option value="On Leave">On Leave</option>
+                  <option value="Busy">Busy</option>
+                </select>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditModalOpen(false);
+                    setSelectedDoctor(null);
+                    setFormData({ name: "", specialization: "", department: "Cardiology", contact: "", email: "", availability: "Available" });
+                  }}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="flex-1 px-4 py-2 bg-[#2563EB] text-white rounded-lg hover:bg-[#1d4ed8] transition-colors disabled:opacity-50"
+                >
+                  {submitting ? "Updating..." : "Update Doctor"}
                 </button>
               </div>
             </form>
