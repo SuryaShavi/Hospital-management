@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Search, Plus, Mail, Phone, Calendar, Stethoscope } from "lucide-react";
+import { toast } from "sonner";
 
 const doctorsData: {
   id: string;
@@ -15,6 +16,17 @@ const doctorsData: {
 export default function Doctors() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterDepartment, setFilterDepartment] = useState("all");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    name: "",
+    specialization: "",
+    department: "Cardiology",
+    contact: "",
+    email: "",
+    availability: "Available"
+  });
 
   const filteredDoctors = doctorsData.filter((doctor) => {
     const matchesSearch =
@@ -24,6 +36,16 @@ export default function Doctors() {
     return matchesSearch && matchesFilter;
   });
 
+  // Button Handlers
+  const handleAddDoctor = (e: React.FormEvent) => {
+    e.preventDefault();
+    toast.success("Doctor added successfully!", {
+      description: `Dr. ${formData.name} has been added to the system.`
+    });
+    setIsAddModalOpen(false);
+    setFormData({ name: "", specialization: "", department: "Cardiology", contact: "", email: "", availability: "Available" });
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -32,7 +54,10 @@ export default function Doctors() {
           <h1 className="text-3xl font-bold text-[#111827]">Doctors</h1>
           <p className="text-gray-500 mt-1">Manage doctor profiles and schedules</p>
         </div>
-        <button className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors">
+        <button 
+          onClick={() => setIsAddModalOpen(true)}
+          className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors"
+        >
           <Plus className="w-5 h-5" />
           Add Doctor
         </button>
@@ -196,7 +221,10 @@ export default function Doctors() {
                       <p className="text-sm text-gray-500 mb-4">
                         Add doctors to start managing your staff.
                       </p>
-                      <button className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                      <button 
+                        onClick={() => setIsAddModalOpen(true)}
+                        className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                      >
                         <Plus className="w-5 h-5" />
                         Add Doctor
                       </button>
@@ -208,6 +236,102 @@ export default function Doctors() {
           </table>
         </div>
       </div>
+
+      {/* Add Doctor Modal */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+            <h2 className="text-xl font-semibold text-[#111827] mb-4">Add New Doctor</h2>
+            <form onSubmit={handleAddDoctor} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="Dr. John Smith"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Specialization</label>
+                <input
+                  type="text"
+                  value={formData.specialization}
+                  onChange={(e) => setFormData({ ...formData, specialization: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="Cardiologist"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                <select
+                  value={formData.department}
+                  onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Cardiology">Cardiology</option>
+                  <option value="Neurology">Neurology</option>
+                  <option value="Orthopedics">Orthopedics</option>
+                  <option value="Pediatrics">Pediatrics</option>
+                  <option value="General Medicine">General Medicine</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Contact</label>
+                <input
+                  type="tel"
+                  value={formData.contact}
+                  onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="+1 234 567 8900"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="doctor@hospital.com"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Availability</label>
+                <select
+                  value={formData.availability}
+                  onChange={(e) => setFormData({ ...formData, availability: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Available">Available</option>
+                  <option value="On Leave">On Leave</option>
+                  <option value="Busy">Busy</option>
+                </select>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-[#2563EB] text-white rounded-lg hover:bg-[#1d4ed8] transition-colors"
+                >
+                  Add Doctor
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

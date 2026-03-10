@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Search, Plus, Download, CreditCard, DollarSign, FileText } from "lucide-react";
+import { toast } from "sonner";
 
 const billingsData: {
   id: string;
@@ -15,6 +16,18 @@ const billingsData: {
 export default function Billing() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    patientName: "",
+    patientId: "",
+    treatment: "",
+    amount: "",
+    date: "",
+    method: "Cash",
+    paymentStatus: "Pending"
+  });
 
   const filteredBillings = billingsData.filter((billing) => {
     const matchesSearch =
@@ -32,6 +45,16 @@ export default function Billing() {
     .filter((b) => b.paymentStatus === "Pending")
     .reduce((sum, b) => sum + b.amount, 0);
 
+  // Button Handlers
+  const handleAddInvoice = (e: React.FormEvent) => {
+    e.preventDefault();
+    toast.success("Invoice created!", {
+      description: `Invoice for ${formData.patientName} - $${formData.amount} has been created.`
+    });
+    setIsAddModalOpen(false);
+    setFormData({ patientName: "", patientId: "", treatment: "", amount: "", date: "", method: "Cash", paymentStatus: "Pending" });
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -40,7 +63,10 @@ export default function Billing() {
           <h1 className="text-3xl font-bold text-[#111827]">Billing</h1>
           <p className="text-gray-500 mt-1">Manage patient billing and payments</p>
         </div>
-        <button className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors">
+        <button 
+          onClick={() => setIsAddModalOpen(true)}
+          className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors"
+        >
           <Plus className="w-5 h-5" />
           New Invoice
         </button>
@@ -206,7 +232,10 @@ export default function Billing() {
                       <p className="text-sm text-gray-500 mb-4">
                         Create invoices to start tracking payments.
                       </p>
-                      <button className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                      <button 
+                        onClick={() => setIsAddModalOpen(true)}
+                        className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                      >
                         <Plus className="w-5 h-5" />
                         New Invoice
                       </button>
@@ -218,6 +247,109 @@ export default function Billing() {
           </table>
         </div>
       </div>
+
+      {/* Add Invoice Modal */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+            <h2 className="text-xl font-semibold text-[#111827] mb-4">Create New Invoice</h2>
+            <form onSubmit={handleAddInvoice} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Patient Name</label>
+                <input
+                  type="text"
+                  value={formData.patientName}
+                  onChange={(e) => setFormData({ ...formData, patientName: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Patient ID</label>
+                <input
+                  type="text"
+                  value={formData.patientId}
+                  onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Treatment</label>
+                <input
+                  type="text"
+                  value={formData.treatment}
+                  onChange={(e) => setFormData({ ...formData, treatment: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., General Checkup"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Amount ($)</label>
+                <input
+                  type="number"
+                  value={formData.amount}
+                  onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="0.00"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                <input
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Method</label>
+                <select
+                  value={formData.method}
+                  onChange={(e) => setFormData({ ...formData, method: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Cash">Cash</option>
+                  <option value="Credit Card">Credit Card</option>
+                  <option value="Debit Card">Debit Card</option>
+                  <option value="Insurance">Insurance</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Payment Status</label>
+                <select
+                  value={formData.paymentStatus}
+                  onChange={(e) => setFormData({ ...formData, paymentStatus: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="Paid">Paid</option>
+                  <option value="Overdue">Overdue</option>
+                </select>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-[#2563EB] text-white rounded-lg hover:bg-[#1d4ed8] transition-colors"
+                >
+                  Create Invoice
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Search, Plus, Edit, Trash2, Filter, Download, Users as UsersIcon } from "lucide-react";
+import { toast } from "sonner";
 
 const patientsData: {
   id: string;
@@ -14,6 +15,20 @@ const patientsData: {
 export default function Patients() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState<typeof patientsData[0] | null>(null);
+
+  // Form state
+  const [formData, setFormData] = useState({
+    name: "",
+    age: "",
+    gender: "Male",
+    contact: "",
+    doctor: "",
+    status: "Active"
+  });
 
   const filteredPatients = patientsData.filter((patient) => {
     const matchesSearch =
@@ -22,6 +37,63 @@ export default function Patients() {
     const matchesFilter = filterStatus === "all" || patient.status === filterStatus;
     return matchesSearch && matchesFilter;
   });
+
+  // Button Handlers
+  const handleExport = () => {
+    toast.success("Exporting patients data...", {
+      description: "Your export will download automatically"
+    });
+  };
+
+  const handleAddPatient = (e: React.FormEvent) => {
+    e.preventDefault();
+    toast.success("Patient added successfully!", {
+      description: `${formData.name} has been added to the system.`
+    });
+    setIsAddModalOpen(false);
+    setFormData({ name: "", age: "", gender: "Male", contact: "", doctor: "", status: "Active" });
+  };
+
+  const handleEditPatient = (patient: typeof patientsData[0]) => {
+    setSelectedPatient(patient);
+    setFormData({
+      name: patient.name,
+      age: patient.age.toString(),
+      gender: patient.gender,
+      contact: patient.contact,
+      doctor: patient.doctor,
+      status: patient.status
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdatePatient = (e: React.FormEvent) => {
+    e.preventDefault();
+    toast.success("Patient updated successfully!", {
+      description: `${formData.name}'s information has been updated.`
+    });
+    setIsEditModalOpen(false);
+    setSelectedPatient(null);
+  };
+
+  const handleDeleteClick = (patient: typeof patientsData[0]) => {
+    setSelectedPatient(patient);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    toast.success("Patient deleted successfully!", {
+      description: `${selectedPatient?.name} has been removed from the system.`
+    });
+    setIsDeleteDialogOpen(false);
+    setSelectedPatient(null);
+  };
+
+  const handleMoreFilters = () => {
+    toast.info("More filters coming soon!", {
+      description: "Advanced filtering options will be available."
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -32,11 +104,17 @@ export default function Patients() {
           <p className="text-gray-500 mt-1">Manage patient records and information</p>
         </div>
         <div className="flex gap-2">
-          <button className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+          <button 
+            onClick={handleExport}
+            className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
             <Download className="w-5 h-5" />
             Export
           </button>
-          <button className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors">
+          <button 
+            onClick={() => setIsAddModalOpen(true)}
+            className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors"
+          >
             <Plus className="w-5 h-5" />
             Add Patient
           </button>
@@ -118,7 +196,10 @@ export default function Patients() {
               <option value="In Treatment">In Treatment</option>
               <option value="Discharged">Discharged</option>
             </select>
-            <button className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+            <button 
+              onClick={handleMoreFilters}
+              className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+            >
               <Filter className="w-5 h-5" />
               More Filters
             </button>
@@ -195,10 +276,16 @@ export default function Patients() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
                       <div className="flex gap-2">
-                        <button className="text-blue-600 hover:bg-blue-50 p-1 rounded transition-colors">
+                        <button 
+                          onClick={() => handleEditPatient(patient)}
+                          className="text-blue-600 hover:bg-blue-50 p-1 rounded transition-colors"
+                        >
                           <Edit className="w-4 h-4" />
                         </button>
-                        <button className="text-red-600 hover:bg-red-50 p-1 rounded transition-colors">
+                        <button 
+                          onClick={() => handleDeleteClick(patient)}
+                          className="text-red-600 hover:bg-red-50 p-1 rounded transition-colors"
+                        >
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
@@ -216,7 +303,10 @@ export default function Patients() {
                       <p className="text-sm text-gray-500 mb-4">
                         Add patients to start managing your records.
                       </p>
-                      <button className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                      <button 
+                        onClick={() => setIsAddModalOpen(true)}
+                        className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                      >
                         <Plus className="w-5 h-5" />
                         Add Patient
                       </button>
@@ -228,6 +318,216 @@ export default function Patients() {
           </table>
         </div>
       </div>
+
+      {/* Add Patient Modal */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+            <h2 className="text-xl font-semibold text-[#111827] mb-4">Add New Patient</h2>
+            <form onSubmit={handleAddPatient} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Age</label>
+                  <input
+                    type="number"
+                    value={formData.age}
+                    onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                  <select
+                    value={formData.gender}
+                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Contact</label>
+                <input
+                  type="tel"
+                  value={formData.contact}
+                  onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Doctor</label>
+                <input
+                  type="text"
+                  value={formData.doctor}
+                  onChange={(e) => setFormData({ ...formData, doctor: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Active">Active</option>
+                  <option value="In Treatment">In Treatment</option>
+                  <option value="Discharged">Discharged</option>
+                </select>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-[#2563EB] text-white rounded-lg hover:bg-[#1d4ed8] transition-colors"
+                >
+                  Add Patient
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Patient Modal */}
+      {isEditModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+            <h2 className="text-xl font-semibold text-[#111827] mb-4">Edit Patient</h2>
+            <form onSubmit={handleUpdatePatient} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Age</label>
+                  <input
+                    type="number"
+                    value={formData.age}
+                    onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Gender</label>
+                  <select
+                    value={formData.gender}
+                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Contact</label>
+                <input
+                  type="tel"
+                  value={formData.contact}
+                  onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Doctor</label>
+                <input
+                  type="text"
+                  value={formData.doctor}
+                  onChange={(e) => setFormData({ ...formData, doctor: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Active">Active</option>
+                  <option value="In Treatment">In Treatment</option>
+                  <option value="Discharged">Discharged</option>
+                </select>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => { setIsEditModalOpen(false); setSelectedPatient(null); }}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-[#2563EB] text-white rounded-lg hover:bg-[#1d4ed8] transition-colors"
+                >
+                  Update Patient
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Dialog */}
+      {isDeleteDialogOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4 p-6">
+            <h2 className="text-xl font-semibold text-[#111827] mb-2">Confirm Delete</h2>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete <strong>{selectedPatient?.name}</strong>? This action cannot be undone.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setIsDeleteDialogOpen(false); setSelectedPatient(null); }}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmDelete}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

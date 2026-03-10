@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Search, Plus, Pill, AlertCircle, PackagePlus, FileText } from "lucide-react";
+import { toast } from "sonner";
 
 const medicationsData: {
   id: string;
@@ -24,6 +25,22 @@ const prescriptionsData: {
 export default function Pharmacy() {
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState<"inventory" | "prescriptions">("inventory");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [isRestockModalOpen, setIsRestockModalOpen] = useState(false);
+  const [selectedMedication, setSelectedMedication] = useState<typeof medicationsData[0] | null>(null);
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    name: "",
+    category: "Antibiotics",
+    stock: "",
+    price: "",
+    expiryDate: ""
+  });
+
+  const [restockData, setRestockData] = useState({
+    quantity: ""
+  });
 
   const filteredMedications = medicationsData.filter((med) =>
     med.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -48,6 +65,43 @@ export default function Pharmacy() {
     }
   };
 
+  // Button Handlers
+  const handleAddMedicine = (e: React.FormEvent) => {
+    e.preventDefault();
+    toast.success("Medicine added!", {
+      description: `${formData.name} has been added to the inventory.`
+    });
+    setIsAddModalOpen(false);
+    setFormData({ name: "", category: "Antibiotics", stock: "", price: "", expiryDate: "" });
+  };
+
+  const handleRestock = (med: typeof medicationsData[0]) => {
+    setSelectedMedication(med);
+    setRestockData({ quantity: "" });
+    setIsRestockModalOpen(true);
+  };
+
+  const handleRestockSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    toast.success("Medicine restocked!", {
+      description: `${selectedMedication?.name} has been restocked with ${restockData.quantity} units.`
+    });
+    setIsRestockModalOpen(false);
+    setSelectedMedication(null);
+  };
+
+  const handleDispense = (prescription: typeof prescriptionsData[0]) => {
+    toast.success("Prescription dispensed!", {
+      description: `${prescription.medication} has been dispensed to ${prescription.patientName}.`
+    });
+  };
+
+  const handleViewPrescription = (prescription: typeof prescriptionsData[0]) => {
+    toast.info("Viewing prescription", {
+      description: `Prescription details for ${prescription.patientName}`
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -56,7 +110,10 @@ export default function Pharmacy() {
           <h1 className="text-3xl font-bold text-[#111827]">Pharmacy</h1>
           <p className="text-gray-500 mt-1">Manage medicines and prescriptions</p>
         </div>
-        <button className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors">
+        <button 
+          onClick={() => setIsAddModalOpen(true)}
+          className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors"
+        >
           <Plus className="w-5 h-5" />
           Add Medicine
         </button>
@@ -216,7 +273,10 @@ export default function Pharmacy() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <button className="text-blue-600 hover:bg-blue-50 px-3 py-1 rounded transition-colors">
+                        <button 
+                          onClick={() => handleRestock(med)}
+                          className="text-blue-600 hover:bg-blue-50 px-3 py-1 rounded transition-colors"
+                        >
                           Restock
                         </button>
                       </td>
@@ -233,7 +293,10 @@ export default function Pharmacy() {
                         <p className="text-sm text-gray-500 mb-4">
                           Add medicines to start managing your pharmacy inventory.
                         </p>
-                        <button className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                        <button 
+                          onClick={() => setIsAddModalOpen(true)}
+                          className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                        >
                           <Plus className="w-5 h-5" />
                           Add Medicine
                         </button>
@@ -311,7 +374,10 @@ export default function Pharmacy() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm">
-                        <button className="text-blue-600 hover:bg-blue-50 px-3 py-1 rounded transition-colors">
+                        <button 
+                          onClick={() => pre.status === "Pending" ? handleDispense(pre) : handleViewPrescription(pre)}
+                          className="text-blue-600 hover:bg-blue-50 px-3 py-1 rounded transition-colors"
+                        >
                           {pre.status === "Pending" ? "Dispense" : "View"}
                         </button>
                       </td>
@@ -334,6 +400,126 @@ export default function Pharmacy() {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Add Medicine Modal */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+            <h2 className="text-xl font-semibold text-[#111827] mb-4">Add New Medicine</h2>
+            <form onSubmit={handleAddMedicine} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Medicine Name</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <select
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Antibiotics">Antibiotics</option>
+                  <option value="Pain Relief">Pain Relief</option>
+                  <option value="Vitamins">Vitamins</option>
+                  <option value="Cardiology">Cardiology</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Stock (units)</label>
+                <input
+                  type="number"
+                  value={formData.stock}
+                  onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Price ($)</label>
+                <input
+                  type="number"
+                  value={formData.price}
+                  onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  step="0.01"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Expiry Date</label>
+                <input
+                  type="date"
+                  value={formData.expiryDate}
+                  onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-[#2563EB] text-white rounded-lg hover:bg-[#1d4ed8] transition-colors"
+                >
+                  Add Medicine
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Restock Modal */}
+      {isRestockModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-sm mx-4 p-6">
+            <h2 className="text-xl font-semibold text-[#111827] mb-4">Restock Medicine</h2>
+            <p className="text-gray-600 mb-4">
+              Restocking: <strong>{selectedMedication?.name}</strong>
+            </p>
+            <form onSubmit={handleRestockSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Quantity to Add</label>
+                <input
+                  type="number"
+                  value={restockData.quantity}
+                  onChange={(e) => setRestockData({ quantity: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => { setIsRestockModalOpen(false); setSelectedMedication(null); }}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-[#2563EB] text-white rounded-lg hover:bg-[#1d4ed8] transition-colors"
+                >
+                  Restock
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

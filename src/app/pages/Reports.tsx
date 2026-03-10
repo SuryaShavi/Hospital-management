@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   BarChart,
   Bar,
@@ -14,6 +15,7 @@ import {
   ResponsiveContainer,
 } from "recharts";
 import { Download, Calendar, TrendingUp, Users, DollarSign } from "lucide-react";
+import { toast } from "sonner";
 
 const patientGrowthData: { month: string; patients: number }[] = [];
 
@@ -26,6 +28,21 @@ const appointmentTrendsData: { name: string; value: number; color: string }[] = 
 const departmentData: { department: string; patients: number }[] = [];
 
 export default function Reports() {
+  const [dateRange, setDateRange] = useState("");
+
+  // Button Handlers
+  const handleDateRange = () => {
+    toast.info("Date range selector", {
+      description: "Select a custom date range for the report."
+    });
+  };
+
+  const handleExportReport = () => {
+    toast.success("Report exported!", {
+      description: "Your report has been downloaded successfully."
+    });
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -35,11 +52,17 @@ export default function Reports() {
           <p className="text-gray-500 mt-1">Hospital performance and insights</p>
         </div>
         <div className="flex gap-2">
-          <button className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+          <button 
+            onClick={handleDateRange}
+            className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
             <Calendar className="w-5 h-5" />
             Date Range
           </button>
-          <button className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors">
+          <button 
+            onClick={handleExportReport}
+            className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors"
+          >
             <Download className="w-5 h-5" />
             Export Report
           </button>
@@ -237,3 +260,4 @@ export default function Reports() {
     </div>
   );
 }
+

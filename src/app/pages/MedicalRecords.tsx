@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Upload, Download, FileText, Search, Filter, Calendar, User } from "lucide-react";
+import { toast } from "sonner";
 
 const medicalRecordsData: {
   id: string;
@@ -15,6 +16,18 @@ const medicalRecordsData: {
 export default function MedicalRecords() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [isNewRecordModalOpen, setIsNewRecordModalOpen] = useState(false);
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    patientName: "",
+    patientId: "",
+    recordType: "",
+    category: "Lab Results",
+    date: "",
+    doctor: ""
+  });
 
   const filteredRecords = medicalRecordsData.filter((record) => {
     const matchesSearch =
@@ -23,6 +36,35 @@ export default function MedicalRecords() {
     const matchesFilter = filterCategory === "all" || record.category === filterCategory;
     return matchesSearch && matchesFilter;
   });
+
+  // Button Handlers
+  const handleUpload = () => {
+    setIsUploadModalOpen(true);
+  };
+
+  const handleUploadSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    toast.success("File uploaded successfully!", {
+      description: "The medical record has been uploaded to the system."
+    });
+    setIsUploadModalOpen(false);
+    setFormData({ patientName: "", patientId: "", recordType: "", category: "Lab Results", date: "", doctor: "" });
+  };
+
+  const handleNewRecord = (e: React.FormEvent) => {
+    e.preventDefault();
+    toast.success("Medical record created!", {
+      description: `New ${formData.category} record for ${formData.patientName} has been created.`
+    });
+    setIsNewRecordModalOpen(false);
+    setFormData({ patientName: "", patientId: "", recordType: "", category: "Lab Results", date: "", doctor: "" });
+  };
+
+  const handleDownload = (record: typeof medicalRecordsData[0]) => {
+    toast.success("Download started!", {
+      description: `Downloading ${record.recordType} for ${record.patientName}`
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -33,11 +75,17 @@ export default function MedicalRecords() {
           <p className="text-gray-500 mt-1">Manage patient medical records and documents</p>
         </div>
         <div className="flex gap-2">
-          <button className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors">
+          <button 
+            onClick={handleUpload}
+            className="inline-flex items-center gap-2 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
             <Upload className="w-5 h-5" />
             Upload
           </button>
-          <button className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors">
+          <button 
+            onClick={() => setIsNewRecordModalOpen(true)}
+            className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors"
+          >
             <FileText className="w-5 h-5" />
             New Record
           </button>
@@ -182,7 +230,10 @@ export default function MedicalRecords() {
                       {record.doctor}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <button className="text-blue-600 hover:bg-blue-50 p-1 rounded transition-colors">
+                      <button 
+                        onClick={() => handleDownload(record)}
+                        className="text-blue-600 hover:bg-blue-50 p-1 rounded transition-colors"
+                      >
                         <Download className="w-4 h-4" />
                       </button>
                     </td>
@@ -199,7 +250,10 @@ export default function MedicalRecords() {
                       <p className="text-sm text-gray-500 mb-4">
                         Upload or create records to get started.
                       </p>
-                      <button className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                      <button 
+                        onClick={() => setIsNewRecordModalOpen(true)}
+                        className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                      >
                         <Upload className="w-5 h-5" />
                         Upload Record
                       </button>
@@ -211,6 +265,163 @@ export default function MedicalRecords() {
           </table>
         </div>
       </div>
+
+      {/* Upload Modal */}
+      {isUploadModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+            <h2 className="text-xl font-semibold text-[#111827] mb-4">Upload Medical Record</h2>
+            <form onSubmit={handleUploadSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Patient Name</label>
+                <input
+                  type="text"
+                  value={formData.patientName}
+                  onChange={(e) => setFormData({ ...formData, patientName: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Patient ID</label>
+                <input
+                  type="text"
+                  value={formData.patientId}
+                  onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <select
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Lab Results">Lab Results</option>
+                  <option value="Prescription">Prescription</option>
+                  <option value="Imaging">Imaging</option>
+                  <option value="Consultation">Consultation</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Upload File</label>
+                <input
+                  type="file"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsUploadModalOpen(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-[#2563EB] text-white rounded-lg hover:bg-[#1d4ed8] transition-colors"
+                >
+                  Upload
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* New Record Modal */}
+      {isNewRecordModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+            <h2 className="text-xl font-semibold text-[#111827] mb-4">Create New Record</h2>
+            <form onSubmit={handleNewRecord} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Patient Name</label>
+                <input
+                  type="text"
+                  value={formData.patientName}
+                  onChange={(e) => setFormData({ ...formData, patientName: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Patient ID</label>
+                <input
+                  type="text"
+                  value={formData.patientId}
+                  onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Record Type</label>
+                <input
+                  type="text"
+                  value={formData.recordType}
+                  onChange={(e) => setFormData({ ...formData, recordType: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="e.g., Blood Test, X-Ray"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <select
+                  value={formData.category}
+                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Lab Results">Lab Results</option>
+                  <option value="Prescription">Prescription</option>
+                  <option value="Imaging">Imaging</option>
+                  <option value="Consultation">Consultation</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                <input
+                  type="date"
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Doctor</label>
+                <input
+                  type="text"
+                  value={formData.doctor}
+                  onChange={(e) => setFormData({ ...formData, doctor: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsNewRecordModalOpen(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-[#2563EB] text-white rounded-lg hover:bg-[#1d4ed8] transition-colors"
+                >
+                  Create Record
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

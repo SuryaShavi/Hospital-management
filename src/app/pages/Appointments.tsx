@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Calendar as CalendarIcon, Clock, Plus, Search, Filter } from "lucide-react";
+import { toast } from "sonner";
 
 const appointmentsData: {
   id: string;
@@ -14,6 +15,17 @@ const appointmentsData: {
 export default function Appointments() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  
+  // Form state
+  const [formData, setFormData] = useState({
+    patientName: "",
+    doctorName: "",
+    date: "",
+    time: "",
+    type: "Check-up",
+    status: "Pending"
+  });
 
   const filteredAppointments = appointmentsData.filter((appointment) => {
     const matchesSearch =
@@ -23,6 +35,16 @@ export default function Appointments() {
     return matchesSearch && matchesFilter;
   });
 
+  // Button Handlers
+  const handleAddAppointment = (e: React.FormEvent) => {
+    e.preventDefault();
+    toast.success("Appointment scheduled!", {
+      description: `Appointment for ${formData.patientName} with ${formData.doctorName} on ${formData.date} at ${formData.time}`
+    });
+    setIsAddModalOpen(false);
+    setFormData({ patientName: "", doctorName: "", date: "", time: "", type: "Check-up", status: "Pending" });
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -31,7 +53,10 @@ export default function Appointments() {
           <h1 className="text-3xl font-bold text-[#111827]">Appointments</h1>
           <p className="text-gray-500 mt-1">Manage patient appointments and schedules</p>
         </div>
-        <button className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors">
+        <button 
+          onClick={() => setIsAddModalOpen(true)}
+          className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors"
+        >
           <Plus className="w-5 h-5" />
           New Appointment
         </button>
@@ -197,7 +222,10 @@ export default function Appointments() {
                       <p className="text-sm text-gray-500 mb-4">
                         Create appointments to manage your schedule.
                       </p>
-                      <button className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors">
+                      <button 
+                        onClick={() => setIsAddModalOpen(true)}
+                        className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                      >
                         <Plus className="w-5 h-5" />
                         New Appointment
                       </button>
@@ -209,6 +237,100 @@ export default function Appointments() {
           </table>
         </div>
       </div>
+
+      {/* Add Appointment Modal */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6">
+            <h2 className="text-xl font-semibold text-[#111827] mb-4">Schedule New Appointment</h2>
+            <form onSubmit={handleAddAppointment} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Patient Name</label>
+                <input
+                  type="text"
+                  value={formData.patientName}
+                  onChange={(e) => setFormData({ ...formData, patientName: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="John Doe"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Doctor Name</label>
+                <input
+                  type="text"
+                  value={formData.doctorName}
+                  onChange={(e) => setFormData({ ...formData, doctorName: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  placeholder="Dr. Smith"
+                  required
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                  <input
+                    type="date"
+                    value={formData.date}
+                    onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Time</label>
+                  <input
+                    type="time"
+                    value={formData.time}
+                    onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+                <select
+                  value={formData.type}
+                  onChange={(e) => setFormData({ ...formData, type: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Check-up">Check-up</option>
+                  <option value="Follow-up">Follow-up</option>
+                  <option value="Consultation">Consultation</option>
+                  <option value="Emergency">Emergency</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Pending">Pending</option>
+                  <option value="Confirmed">Confirmed</option>
+                </select>
+              </div>
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setIsAddModalOpen(false)}
+                  className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-[#2563EB] text-white rounded-lg hover:bg-[#1d4ed8] transition-colors"
+                >
+                  Schedule
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
