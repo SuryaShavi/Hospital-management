@@ -3,6 +3,7 @@ package com.hospital.service;
 import com.hospital.model.Pharmacy;
 import com.hospital.repository.PharmacyRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -18,7 +19,7 @@ public class PharmacyService {
         return pharmacyRepository.findAll();
     }
 
-    public Optional<Pharmacy> getMedicationById(Long id) {
+    public Optional<Pharmacy> getMedicationById(@NonNull Long id) {
         return pharmacyRepository.findById(id);
     }
 
@@ -26,7 +27,7 @@ public class PharmacyService {
         return pharmacyRepository.save(pharmacy);
     }
 
-    public void deleteMedication(Long id) {
+    public void deleteMedication(@NonNull Long id) {
         pharmacyRepository.deleteById(id);
     }
 }

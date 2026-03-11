@@ -2,6 +2,7 @@ package com.hospital.controller;
 
 import com.hospital.model.Pharmacy;
 import com.hospital.service.PharmacyService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -11,7 +12,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/pharmacy")
-@CrossOrigin(origins = "http://localhost:5173")
 public class PharmacyController {
 
     @Autowired
@@ -33,13 +33,13 @@ public class PharmacyController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
-    public Pharmacy createMedication(@RequestBody Pharmacy pharmacy) {
+    public Pharmacy createMedication(@Valid @RequestBody Pharmacy pharmacy) {
         return pharmacyService.saveMedication(pharmacy);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
-    public ResponseEntity<Pharmacy> updateMedication(@PathVariable Long id, @RequestBody Pharmacy pharmacy) {
+    public ResponseEntity<Pharmacy> updateMedication(@PathVariable Long id, @Valid @RequestBody Pharmacy pharmacy) {
         return pharmacyService.getMedicationById(id)
                 .map(existingPharmacy -> {
                     pharmacy.setId(id);

@@ -9,6 +9,7 @@ import {
   TrendingUp,
   Clock,
   AlertCircle,
+  CreditCard,
 } from "lucide-react";
 import {
   LineChart,
@@ -25,45 +26,7 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { authApi, UserRole } from "../services/api";
-
-const stats = [
-  {
-    name: "Total Patients",
-    value: "—",
-    change: "—",
-    icon: Users,
-    color: "bg-blue-500",
-  },
-  {
-    name: "Doctors Available",
-    value: "—",
-    change: "—",
-    icon: Stethoscope,
-    color: "bg-teal-500",
-  },
-  {
-    name: "Today's Appointments",
-    value: "—",
-    change: "—",
-    icon: Calendar,
-    color: "bg-green-500",
-  },
-  {
-    name: "Pending Lab Reports",
-    value: "—",
-    change: "—",
-    icon: FileText,
-    color: "bg-orange-500",
-  },
-  {
-    name: "Occupied Beds",
-    value: "—",
-    change: "—",
-    icon: Bed,
-    color: "bg-purple-500",
-  },
-];
+import { authApi, UserRole, getDashboardStats, DashboardStats } from "../services/api";
 
 const patientVisitsData: { month: string; patients: number }[] = [];
 
@@ -78,6 +41,8 @@ const recentAdmissions: { id: number; patient: string; age: number; condition: s
 export default function Dashboard() {
   const [searchParams] = useSearchParams();
   const [showUnauthorized, setShowUnauthorized] = useState(false);
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
   const user = authApi.getUser();
 
   useEffect(() => {
@@ -89,6 +54,24 @@ export default function Dashboard() {
       }, 5000);
     }
   }, [searchParams]);
+
+  // Fetch dashboard stats based on user role
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const result = await getDashboardStats();
+        if (result.data) {
+          setStats(result.data);
+        }
+      } catch (error) {
+        console.error('Error fetching dashboard stats:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStats();
+  }, []);
 
   // Get role display name
   const getRoleDisplayName = (role: string | undefined) => {
@@ -105,6 +88,122 @@ export default function Dashboard() {
         return "User";
     }
   };
+
+  // Get stats based on user role
+  const getStats = () => {
+    const role = user?.role;
+    
+    if (role === 'PATIENT') {
+      return [
+        {
+          name: "My Appointments",
+          value: stats?.myAppointments ?? "—",
+          change: "—",
+          icon: Calendar,
+          color: "bg-blue-500",
+        },
+        {
+          name: "My Medical Records",
+          value: stats?.myRecords ?? "—",
+          change: "—",
+          icon: FileText,
+          color: "bg-green-500",
+        },
+        {
+          name: "My Bills",
+          value: stats?.myBillings ?? "—",
+          change: "—",
+          icon: CreditCard,
+          color: "bg-purple-500",
+        },
+        {
+          name: "Doctors Available",
+          value: stats?.doctorsAvailable ?? "—",
+          change: "—",
+          icon: Stethoscope,
+          color: "bg-teal-500",
+        },
+      ];
+    } else if (role === 'DOCTOR') {
+      return [
+        {
+          name: "My Patients",
+          value: stats?.myPatients ?? "—",
+          change: "—",
+          icon: Users,
+          color: "bg-blue-500",
+        },
+        {
+          name: "My Appointments",
+          value: stats?.myAppointments ?? "—",
+          change: "—",
+          icon: Calendar,
+          color: "bg-green-500",
+        },
+        {
+          name: "Total Doctors",
+          value: stats?.doctorsAvailable ?? "—",
+          change: "—",
+          icon: Stethoscope,
+          color: "bg-teal-500",
+        },
+        {
+          name: "Pending Reports",
+          value: "—",
+          change: "—",
+          icon: FileText,
+          color: "bg-orange-500",
+        },
+      ];
+    } else {
+      // ADMIN, NURSE, RECEPTIONIST
+      return [
+        {
+          name: "Total Patients",
+          value: stats?.totalPatients ?? "—",
+          change: "—",
+          icon: Users,
+          color: "bg-blue-500",
+        },
+        {
+          name: "Doctors Available",
+          value: stats?.doctorsAvailable ?? "—",
+          change: "—",
+          icon: Stethoscope,
+          color: "bg-teal-500",
+        },
+        {
+          name: "Today's Appointments",
+          value: stats?.todayAppointments ?? "—",
+          change: "—",
+          icon: Calendar,
+          color: "bg-green-500",
+        },
+        {
+          name: "Pending Lab Reports",
+          value: "—",
+          change: "—",
+          icon: FileText,
+          color: "bg-orange-500",
+        },
+        {
+          name: "Occupied Beds",
+          value: "—",
+          change: "—",
+          icon: Bed,
+          color: "bg-purple-500",
+        },
+      ];
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -127,8 +226,8 @@ export default function Dashboard() {
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-        {stats.map((stat) => {
+      <div className={`grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-${user?.role === 'PATIENT' || user?.role === 'DOCTOR' ? '2' : '3'} xl:grid-cols-${user?.role === 'ADMIN' ? '5' : '4'} gap-4`}>
+        {getStats().map((stat) => {
           const Icon = stat.icon;
           return (
             <div

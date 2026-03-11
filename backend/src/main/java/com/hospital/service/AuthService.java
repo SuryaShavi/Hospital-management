@@ -3,7 +3,12 @@ package com.hospital.service;
 import com.hospital.dto.AuthResponse;
 import com.hospital.dto.LoginRequest;
 import com.hospital.dto.RegisterRequest;
+import com.hospital.model.Doctor;
+import com.hospital.model.Patient;
+import com.hospital.model.Role;
 import com.hospital.model.User;
+import com.hospital.repository.DoctorRepository;
+import com.hospital.repository.PatientRepository;
 import com.hospital.repository.UserRepository;
 import com.hospital.security.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -12,16 +17,20 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final DoctorRepository doctorRepository;
+    private final PatientRepository patientRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final UserDetailsService userDetailsService;
 
+    @Transactional
     public AuthResponse register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new RuntimeException("Email already exists");
@@ -34,7 +43,34 @@ public class AuthService {
         user.setRole(request.getRole());
         user.setEnabled(true);
 
-        userRepository.save(user);
+        user = userRepository.save(user);
+
+        // Create corresponding Doctor or Patient record based on role and link to user
+        if (request.getRole() == Role.DOCTOR) {
+            Doctor doctor = new Doctor();
+            doctor.setUser(user);
+            doctor.setName(request.getName());
+            doctor.setEmail(request.getEmail());
+            doctor.setContact("");
+            doctor.setSpecialization("General Medicine");
+            doctor.setDepartment("General Medicine");
+            doctor.setAvailability("Available");
+            doctor.setPatients(0);
+            doctorRepository.save(doctor);
+        } else if (request.getRole() == Role.PATIENT) {
+            Patient patient = new Patient();
+            patient.setUser(user);
+            patient.setName(request.getName());
+            patient.setEmail(request.getEmail());
+            patient.setContact("");
+            patient.setAge(0);
+            patient.setGender("Male");
+            patient.setStatus("Active");
+            patient.setAddress("");
+            patient.setBloodType("");
+            patient.setDoctor("");
+            patientRepository.save(patient);
+        }
 
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.getEmail());
         String token = jwtUtil.generateToken(userDetails);

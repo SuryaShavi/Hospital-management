@@ -12,7 +12,7 @@ export interface RegisterRequest {
   name: string;
   email: string;
   password: string;
-  role: 'ADMIN' | 'DOCTOR' | 'NURSE' | 'RECEPTIONIST';
+  role: 'ADMIN' | 'DOCTOR' | 'NURSE' | 'RECEPTIONIST' | 'PATIENT';
 }
 
 export interface AuthResponse {
@@ -24,7 +24,7 @@ export interface AuthResponse {
 }
 
 // ============== Role Types ==============
-export type UserRole = 'ADMIN' | 'DOCTOR' | 'NURSE' | 'RECEPTIONIST';
+export type UserRole = 'ADMIN' | 'DOCTOR' | 'NURSE' | 'RECEPTIONIST' | 'PATIENT';
 
 // Role-based page access permissions
 export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
@@ -32,6 +32,7 @@ export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
   DOCTOR: ['dashboard', 'patients', 'appointments', 'medical-records', 'pharmacy', 'billing'],
   NURSE: ['dashboard', 'patients', 'appointments', 'pharmacy'],
   RECEPTIONIST: ['dashboard', 'appointments', 'billing'],
+  PATIENT: ['dashboard', 'appointments', 'medical-records', 'billing'],
 };
 
 // Check if user has permission to access a specific route
@@ -581,5 +582,164 @@ export async function deleteMedicalRecord(id: number): Promise<ApiResponse<void>
   } catch (error) {
     console.error('Error deleting medical record:', error);
     return { error: error instanceof Error ? error.message : 'Failed to delete medical record' };
+  }
+}
+
+// ============== Role-Based API Calls ==============
+
+// Get current logged-in user's profile based on role
+export async function getMyProfile(): Promise<ApiResponse<Doctor | Patient>> {
+  try {
+    const user = authApi.getUser();
+    if (!user) {
+      return { error: 'User not authenticated' };
+    }
+
+    let url = '';
+    if (user.role === 'DOCTOR') {
+      url = `${API_BASE_URL}/doctors/me`;
+    } else if (user.role === 'PATIENT') {
+      url = `${API_BASE_URL}/patients/me`;
+    } else {
+      return { error: 'Invalid role for profile access' };
+    }
+
+    const response = await fetch(url, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    const data = await response.json();
+    return { data };
+  } catch (error) {
+    console.error('Error fetching profile:', error);
+    return { error: error instanceof Error ? error.message : 'Failed to fetch profile' };
+  }
+}
+
+// Get patients for current doctor
+export async function getMyPatients(): Promise<ApiResponse<Patient[]>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/doctors/my-patients`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    const data = await response.json();
+    return { data };
+  } catch (error) {
+    console.error('Error fetching patients:', error);
+    return { error: error instanceof Error ? error.message : 'Failed to fetch patients' };
+  }
+}
+
+// Get appointments for current user (doctor or patient)
+export async function getMyAppointments(): Promise<ApiResponse<Appointment[]>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/appointments/my-appointments`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    const data = await response.json();
+    return { data };
+  } catch (error) {
+    console.error('Error fetching appointments:', error);
+    return { error: error instanceof Error ? error.message : 'Failed to fetch appointments' };
+  }
+}
+
+// Get medical records for current patient
+export async function getMyMedicalRecords(): Promise<ApiResponse<MedicalRecord[]>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/medical-records/my-records`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    const data = await response.json();
+    return { data };
+  } catch (error) {
+    console.error('Error fetching medical records:', error);
+    return { error: error instanceof Error ? error.message : 'Failed to fetch medical records' };
+  }
+}
+
+// Get billing records for current user (patient or doctor)
+export async function getMyBillings(): Promise<ApiResponse<Billing[]>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/billings/my-billings`, {
+      headers: getAuthHeaders(),
+    });
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    const data = await response.json();
+    return { data };
+  } catch (error) {
+    console.error('Error fetching billings:', error);
+    return { error: error instanceof Error ? error.message : 'Failed to fetch billings' };
+  }
+}
+
+// Dashboard stats interface
+export interface DashboardStats {
+  totalPatients?: number;
+  doctorsAvailable?: number;
+  todayAppointments?: number;
+  pendingReports?: number;
+  myAppointments?: number;
+  myPatients?: number;
+  myRecords?: number;
+  myBillings?: number;
+}
+
+// Get dashboard stats based on user role
+export async function getDashboardStats(): Promise<ApiResponse<DashboardStats>> {
+  try {
+    const user = authApi.getUser();
+    if (!user) {
+      return { error: 'User not authenticated' };
+    }
+
+    const stats: DashboardStats = {};
+
+    // Fetch all counts in parallel
+    const [patientsRes, doctorsRes, appointmentsRes] = await Promise.all([
+      fetch(`${API_BASE_URL}/patients`, { headers: getAuthHeaders() }),
+      fetch(`${API_BASE_URL}/doctors`, { headers: getAuthHeaders() }),
+      fetch(`${API_BASE_URL}/appointments`, { headers: getAuthHeaders() })
+    ]);
+
+    const patients = patientsRes.ok ? await patientsRes.json() : [];
+    const doctors = doctorsRes.ok ? await doctorsRes.json() : [];
+    const appointments = appointmentsRes.ok ? await appointmentsRes.json() : [];
+
+    // Common stats for all
+    stats.doctorsAvailable = doctors.length;
+
+    if (user.role === 'ADMIN') {
+      stats.totalPatients = patients.length;
+      stats.todayAppointments = appointments.length;
+    } else if (user.role === 'DOCTOR') {
+      // Get doctor's profile
+      const doctorRes = await fetch(`${API_BASE_URL}/doctors/me`, { headers: getAuthHeaders() });
+      if (doctorRes.ok) {
+        const doctor = await doctorRes.json();
+        // Count patients assigned to this doctor
+        stats.myPatients = patients.filter((p: Patient) => p.doctor === String(doctor.id)).length;
+      }
+      // Get doctor's appointments
+      stats.myAppointments = appointments.length;
+    } else if (user.role === 'PATIENT') {
+      // Get patient's profile
+      const patientRes = await fetch(`${API_BASE_URL}/patients/me`, { headers: getAuthHeaders() });
+      if (patientRes.ok) {
+        const patient = await patientRes.json();
+        // Count patient's appointments
+        stats.myAppointments = appointments.filter((a: Appointment) => 
+          a.patientName === patient.name
+        ).length;
+      }
+    }
+
+    return { data: stats };
+  } catch (error) {
+    console.error('Error fetching dashboard stats:', error);
+    return { error: error instanceof Error ? error.message : 'Failed to fetch dashboard stats' };
   }
 }

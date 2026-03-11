@@ -1,8 +1,10 @@
 package com.hospital.service;
 
 import com.hospital.model.Patient;
+import com.hospital.model.User;
 import com.hospital.repository.PatientRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -18,15 +20,23 @@ public class PatientService {
         return patientRepository.findAll();
     }
 
-    public Optional<Patient> getPatientById(Long id) {
+    public Optional<Patient> getPatientById(@NonNull Long id) {
         return patientRepository.findById(id);
+    }
+
+    public Optional<Patient> getPatientByUserId(Long userId) {
+        return patientRepository.findByUserId(userId);
+    }
+
+    public Optional<Patient> getPatientByUser(User user) {
+        return patientRepository.findByUser(user);
     }
 
     public Patient savePatient(Patient patient) {
         return patientRepository.save(patient);
     }
 
-    public void deletePatient(Long id) {
+    public void deletePatient(@NonNull Long id) {
         patientRepository.deleteById(id);
     }
 }

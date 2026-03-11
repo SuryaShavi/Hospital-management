@@ -135,6 +135,7 @@ export default function Register() {
                 <option value="DOCTOR">Doctor</option>
                 <option value="NURSE">Nurse</option>
                 <option value="RECEPTIONIST">Receptionist</option>
+                <option value="PATIENT">Patient</option>
               </select>
             </div>
 
