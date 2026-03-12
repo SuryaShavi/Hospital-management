@@ -6,9 +6,6 @@
     "module": "ESNext",
     "skipLibCheck": true,
 
-    /* Explicitly avoid automatic inclusion of all @types packages */
-    "types": [],
-
     /* Bundler mode */
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
