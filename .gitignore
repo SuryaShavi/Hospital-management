@@ -54,3 +54,9 @@ coverage
 !.yarn/sdks
 !.yarn/versions
 
+# Project TODO and temp lists
+TODO*.md
+ATTRIBUTIONS.md
+DONE.md
+ERROR_CHECK_REPORT.md
+

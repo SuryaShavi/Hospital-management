@@ -24,6 +24,12 @@ public class MedicalRecordController {
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR')")
     public List<MedicalRecord> getAllMedicalRecords() {
+        // doctors should only see medical records for their patients
+        if (userContextService.isDoctor()) {
+            return userContextService.getCurrentDoctor()
+                    .map(doctor -> medicalRecordService.getMedicalRecordsByDoctorPatients(doctor.getId()))
+                    .orElse(List.of());
+        }
         return medicalRecordService.getAllMedicalRecords();
     }
 

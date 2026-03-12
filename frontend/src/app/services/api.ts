@@ -226,7 +226,21 @@ export async function getAllPatients(): Promise<ApiResponse<Patient[]>> {
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    const data = await response.json();
+    const raw = await response.json();
+    // map backend entity (doctor object) to simple patient shape
+    const data: Patient[] = (Array.isArray(raw) ? raw : []).map((p: any) => ({
+      id: p.id,
+      name: p.name,
+      age: p.age,
+      gender: p.gender,
+      contact: p.contact,
+      email: p.email,
+      address: p.address,
+      bloodType: p.bloodType,
+      status: p.status,
+      // store doctor as id string for now
+      doctor: p.doctor ? String(p.doctor.id || p.doctor.name) : '',
+    }));
     return { data };
   } catch (error) {
     console.error('Error fetching patients:', error);
@@ -236,13 +250,36 @@ export async function getAllPatients(): Promise<ApiResponse<Patient[]>> {
 
 export async function createPatient(patient: Omit<Patient, 'id'>): Promise<ApiResponse<Patient>> {
   try {
+    // convert doctor id string (if provided) to nested object
+    const payload: any = { ...patient };
+    if (payload.doctor) {
+      const id = parseInt(String(payload.doctor), 10);
+      if (!isNaN(id)) {
+        payload.doctor = { id };
+      } else {
+        delete payload.doctor;
+      }
+    }
     const response = await fetch(`${API_BASE_URL}/patients`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify(patient),
+      body: JSON.stringify(payload),
     });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    const data = await response.json();
+    const raw = await response.json();
+    // map result as above
+    const data: Patient = {
+      id: raw.id,
+      name: raw.name,
+      age: raw.age,
+      gender: raw.gender,
+      contact: raw.contact,
+      email: raw.email,
+      address: raw.address,
+      bloodType: raw.bloodType,
+      status: raw.status,
+      doctor: raw.doctor ? String(raw.doctor.id || raw.doctor.name) : '',
+    };
     return { data };
   } catch (error) {
     console.error('Error creating patient:', error);
@@ -252,13 +289,34 @@ export async function createPatient(patient: Omit<Patient, 'id'>): Promise<ApiRe
 
 export async function updatePatient(id: number, patient: Patient): Promise<ApiResponse<Patient>> {
   try {
+    const payload: any = { ...patient };
+    if (payload.doctor) {
+      const docId = parseInt(String(payload.doctor), 10);
+      if (!isNaN(docId)) {
+        payload.doctor = { id: docId };
+      } else {
+        delete payload.doctor;
+      }
+    }
     const response = await fetch(`${API_BASE_URL}/patients/${id}`, {
       method: 'PUT',
       headers: getAuthHeaders(),
-      body: JSON.stringify(patient),
+      body: JSON.stringify(payload),
     });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    const data = await response.json();
+    const raw = await response.json();
+    const data: Patient = {
+      id: raw.id,
+      name: raw.name,
+      age: raw.age,
+      gender: raw.gender,
+      contact: raw.contact,
+      email: raw.email,
+      address: raw.address,
+      bloodType: raw.bloodType,
+      status: raw.status,
+      doctor: raw.doctor ? String(raw.doctor.id || raw.doctor.name) : '',
+    };
     return { data };
   } catch (error) {
     console.error('Error updating patient:', error);
@@ -348,7 +406,16 @@ export async function getAllAppointments(): Promise<ApiResponse<Appointment[]>> 
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    const data = await response.json();
+    const raw = await response.json();
+    const data: Appointment[] = (Array.isArray(raw) ? raw : []).map((a: any) => ({
+      id: a.id,
+      patientName: a.patient?.name || '',
+      doctorName: a.doctor?.name || '',
+      date: a.date,
+      time: a.time,
+      type: a.type,
+      status: a.status,
+    }));
     return { data };
   } catch (error) {
     console.error('Error fetching appointments:', error);
@@ -358,13 +425,40 @@ export async function getAllAppointments(): Promise<ApiResponse<Appointment[]>> 
 
 export async function createAppointment(appointment: Omit<Appointment, 'id'>): Promise<ApiResponse<Appointment>> {
   try {
+    const payload: any = {
+      date: appointment.date,
+      time: appointment.time,
+      type: appointment.type,
+      status: appointment.status,
+    };
+    if (appointment.patientName) {
+      const pid = parseInt(appointment.patientName, 10);
+      if (!isNaN(pid)) {
+        payload.patient = { id: pid };
+      }
+    }
+    if (appointment.doctorName) {
+      const did = parseInt(appointment.doctorName, 10);
+      if (!isNaN(did)) {
+        payload.doctor = { id: did };
+      }
+    }
     const response = await fetch(`${API_BASE_URL}/appointments`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify(appointment),
+      body: JSON.stringify(payload),
     });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    const data = await response.json();
+    const raw = await response.json();
+    const data: Appointment = {
+      id: raw.id,
+      patientName: raw.patient?.name || '',
+      doctorName: raw.doctor?.name || '',
+      date: raw.date,
+      time: raw.time,
+      type: raw.type,
+      status: raw.status,
+    };
     return { data };
   } catch (error) {
     console.error('Error creating appointment:', error);
@@ -374,13 +468,40 @@ export async function createAppointment(appointment: Omit<Appointment, 'id'>): P
 
 export async function updateAppointment(id: number, appointment: Appointment): Promise<ApiResponse<Appointment>> {
   try {
+    const payload: any = {
+      date: appointment.date,
+      time: appointment.time,
+      type: appointment.type,
+      status: appointment.status,
+    };
+    if (appointment.patientName) {
+      const pid = parseInt(appointment.patientName, 10);
+      if (!isNaN(pid)) {
+        payload.patient = { id: pid };
+      }
+    }
+    if (appointment.doctorName) {
+      const did = parseInt(appointment.doctorName, 10);
+      if (!isNaN(did)) {
+        payload.doctor = { id: did };
+      }
+    }
     const response = await fetch(`${API_BASE_URL}/appointments/${id}`, {
       method: 'PUT',
       headers: getAuthHeaders(),
-      body: JSON.stringify(appointment),
+      body: JSON.stringify(payload),
     });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    const data = await response.json();
+    const raw = await response.json();
+    const data: Appointment = {
+      id: raw.id,
+      patientName: raw.patient?.name || '',
+      doctorName: raw.doctor?.name || '',
+      date: raw.date,
+      time: raw.time,
+      type: raw.type,
+      status: raw.status,
+    };
     return { data };
   } catch (error) {
     console.error('Error updating appointment:', error);
@@ -422,7 +543,23 @@ export async function getBillingById(id: number): Promise<ApiResponse<Billing>> 
     const response = await fetch(`${API_BASE_URL}/billings/${id}`, {
       headers: getAuthHeaders(),
     });
-    return await handleResponse<Billing>(response);
+    const result = await handleResponse<any>(response);
+    if (result.data) {
+      // map dto fields
+      const raw = result.data;
+      const billing: Billing = {
+        id: raw.id,
+        patientName: raw.patientName,
+        patientId: raw.patientId ? String(raw.patientId) : '',
+        treatment: raw.treatment,
+        amount: raw.amount,
+        paymentStatus: raw.paymentStatus,
+        date: raw.date,
+        method: raw.method,
+      };
+      return { data: billing };
+    }
+    return { error: result.error };
   } catch (error) {
     console.error('Error fetching billing by ID:', error);
     return { error: error instanceof Error ? error.message : 'Failed to fetch billing' };
@@ -436,7 +573,22 @@ export async function createBilling(billing: Omit<Billing, 'id'>): Promise<ApiRe
       headers: getAuthHeaders(),
       body: JSON.stringify(billing),
     });
-    return await handleResponse<Billing>(response);
+    const result = await handleResponse<any>(response);
+    if (result.data) {
+      const raw = result.data;
+      const mapped: Billing = {
+        id: raw.id,
+        patientName: raw.patientName,
+        patientId: raw.patientId ? String(raw.patientId) : '',
+        treatment: raw.treatment,
+        amount: raw.amount,
+        paymentStatus: raw.paymentStatus,
+        date: raw.date,
+        method: raw.method,
+      };
+      return { data: mapped };
+    }
+    return { error: result.error };
   } catch (error) {
     console.error('Error creating billing:', error);
     return { error: error instanceof Error ? error.message : 'Failed to create billing' };
@@ -450,7 +602,22 @@ export async function updateBilling(id: number, billing: Billing): Promise<ApiRe
       headers: getAuthHeaders(),
       body: JSON.stringify(billing),
     });
-    return await handleResponse<Billing>(response);
+    const result = await handleResponse<any>(response);
+    if (result.data) {
+      const raw = result.data;
+      const mapped: Billing = {
+        id: raw.id,
+        patientName: raw.patientName,
+        patientId: raw.patientId ? String(raw.patientId) : '',
+        treatment: raw.treatment,
+        amount: raw.amount,
+        paymentStatus: raw.paymentStatus,
+        date: raw.date,
+        method: raw.method,
+      };
+      return { data: mapped };
+    }
+    return { error: result.error };
   } catch (error) {
     console.error('Error updating billing:', error);
     return { error: error instanceof Error ? error.message : 'Failed to update billing' };
@@ -538,7 +705,17 @@ export async function getAllMedicalRecords(): Promise<ApiResponse<MedicalRecord[
       headers: getAuthHeaders(),
     });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    const data = await response.json();
+    const raw = await response.json();
+    const data: MedicalRecord[] = (Array.isArray(raw) ? raw : []).map((r: any) => ({
+      id: r.id,
+      patientName: r.patient?.name || '',
+      patientId: r.patient?.id ? String(r.patient.id) : '',
+      recordType: r.recordType,
+      category: r.category,
+      date: r.date,
+      doctor: r.doctor,
+      status: r.status,
+    }));
     return { data };
   } catch (error) {
     console.error('Error fetching medical records:', error);
@@ -548,13 +725,36 @@ export async function getAllMedicalRecords(): Promise<ApiResponse<MedicalRecord[
 
 export async function createMedicalRecord(record: Omit<MedicalRecord, 'id'>): Promise<ApiResponse<MedicalRecord>> {
   try {
+    const payload: any = {
+      recordType: record.recordType,
+      category: record.category,
+      date: record.date,
+      doctor: record.doctor,
+      status: record.status,
+    };
+    if (record.patientId) {
+      const pid = parseInt(record.patientId, 10);
+      if (!isNaN(pid)) {
+        payload.patient = { id: pid };
+      }
+    }
     const response = await fetch(`${API_BASE_URL}/medical-records`, {
       method: 'POST',
       headers: getAuthHeaders(),
-      body: JSON.stringify(record),
+      body: JSON.stringify(payload),
     });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    const data = await response.json();
+    const raw = await response.json();
+    const data: MedicalRecord = {
+      id: raw.id,
+      patientName: raw.patient?.name || '',
+      patientId: raw.patient?.id ? String(raw.patient.id) : '',
+      recordType: raw.recordType,
+      category: raw.category,
+      date: raw.date,
+      doctor: raw.doctor,
+      status: raw.status,
+    };
     return { data };
   } catch (error) {
     console.error('Error creating medical record:', error);
@@ -564,13 +764,36 @@ export async function createMedicalRecord(record: Omit<MedicalRecord, 'id'>): Pr
 
 export async function updateMedicalRecord(id: number, record: MedicalRecord): Promise<ApiResponse<MedicalRecord>> {
   try {
+    const payload: any = {
+      recordType: record.recordType,
+      category: record.category,
+      date: record.date,
+      doctor: record.doctor,
+      status: record.status,
+    };
+    if (record.patientId) {
+      const pid = parseInt(record.patientId, 10);
+      if (!isNaN(pid)) {
+        payload.patient = { id: pid };
+      }
+    }
     const response = await fetch(`${API_BASE_URL}/medical-records/${id}`, {
       method: 'PUT',
       headers: getAuthHeaders(),
-      body: JSON.stringify(record),
+      body: JSON.stringify(payload),
     });
     if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    const data = await response.json();
+    const raw = await response.json();
+    const data: MedicalRecord = {
+      id: raw.id,
+      patientName: raw.patient?.name || '',
+      patientId: raw.patient?.id ? String(raw.patient.id) : '',
+      recordType: raw.recordType,
+      category: raw.category,
+      date: raw.date,
+      doctor: raw.doctor,
+      status: raw.status,
+    };
     return { data };
   } catch (error) {
     console.error('Error updating medical record:', error);

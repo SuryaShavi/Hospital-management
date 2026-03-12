@@ -39,6 +39,13 @@ public class PatientController {
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'NURSE')")
     public List<Patient> getAllPatients() {
+        // ADMIN and NURSE can see all patients
+        if (userContextService.isDoctor()) {
+            // doctors should only see their own patients
+            return userContextService.getCurrentDoctor()
+                    .map(doctor -> patientService.getPatientsByDoctorId(doctor.getId()))
+                    .orElse(List.of());
+        }
         return patientService.getAllPatients();
     }
 

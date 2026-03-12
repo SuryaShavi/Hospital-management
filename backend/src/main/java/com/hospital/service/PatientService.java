@@ -39,5 +39,12 @@ public class PatientService {
     public void deletePatient(@NonNull Long id) {
         patientRepository.deleteById(id);
     }
+
+    /**
+     * Get patients assigned to a specific doctor (used for role-based filtering)
+     */
+    public List<Patient> getPatientsByDoctorId(Long doctorId) {
+        return patientRepository.findByDoctorId(doctorId);
+    }
 }
 

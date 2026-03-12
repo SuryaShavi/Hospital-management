@@ -24,6 +24,13 @@ public class AppointmentController {
     @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'RECEPTIONIST')")
     public List<Appointment> getAllAppointments() {
+        // doctors should only see their own appointments
+        if (userContextService.isDoctor()) {
+            return userContextService.getCurrentDoctor()
+                    .map(doctor -> appointmentService.getAppointmentsByDoctorId(doctor.getId()))
+                    .orElse(List.of());
+        }
+        // receptionists/admins see all
         return appointmentService.getAllAppointments();
     }
 

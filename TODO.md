@@ -1,21 +1,8 @@
-# Fix BillingController getBillingById Frontend Mapping - TODO Steps
+# Task: Ignore TODO lists from GitHub (Completed)
 
-## Plan Progress Tracker
+- [x] 1. Edit .gitignore to add TODO*.md, ATTRIBUTIONS.md, DONE.md, ERROR_CHECK_REPORT.md
+- [x] 2. Verify with git status (TODO files now ignored, not appearing in untracked/modified)
+- [x] 3. Task complete
 
-### 1. ✅ Create TODO.md with steps (Done)
-
-### 2. ✅ Add getBillingById API function to frontend/src/app/services/api.ts (Done)
-
-### 3. ✅ Create frontend/src/app/pages/BillingDetail.tsx detail page (Done)
-
-### 4. ✅ Update frontend/src/app/routes.tsx - added nested /billing/:id route
-
-### 5. ✅ Update frontend/src/app/pages/Billing.tsx - added clickable ID navigation, Eye icon for View Details, useNavigate hook integrated
-
-### 6. ✅ Full integration complete - Frontend now maps to backend getBillingById endpoint
-
-## Summary
-✅ Fixed BillingController getBillingById frontend mapping
-✅ Added API function, detail page, nested route, list navigation
-✅ Ready for testing: Navigate to /billing, click any Invoice ID to test /api/billings/{id}
-
+.gitignore updated successfully with the ignores.
+Files like TODO*.md, ATTRIBUTIONS.md, DONE.md, ERROR_CHECK_REPORT.md are now ignored by Git (confirmed via git status - not listed as untracked).

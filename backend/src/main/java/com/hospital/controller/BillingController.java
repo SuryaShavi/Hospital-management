@@ -4,6 +4,7 @@ import com.hospital.dto.BillingDTO;
 import com.hospital.model.Billing;
 import com.hospital.service.BillingService;
 import com.hospital.service.UserContextService;
+import com.hospital.repository.PatientRepository;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -20,43 +21,40 @@ public class BillingController {
 
     private final BillingService billingService;
     private final UserContextService userContextService;
+    private final PatientRepository patientRepository;
 
 @GetMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'RECEPTIONIST')")
     public List<BillingDTO> getAllBillings() {
+        // doctors should only see their patients' billings
+        if (userContextService.isDoctor()) {
+            return userContextService.getCurrentDoctor()
+                    .map(doctor -> billingService.getBillingsByDoctorPatientsDTO(doctor.getId()))
+                    .orElse(List.of());
+        }
+        // admin and receptionist see everything
         return billingService.getAllBillingDTOs();
     }
 
     /**
-     * Get all billings DTO list for ADMIN/RECEPTIONIST my-billings (no auth context needed)
+     * Get all billings DTO list for ADMIN/RECEPTIONIST (no auth context needed)
      */
-    @GetMapping("/all")
-    @PreAuthorize("hasAnyRole('ADMIN', 'RECEPTIONIST')")
-    public List<BillingDTO> getAllBillingsForAdmin() {
-        return billingService.getAllBillingDTOs();
-    }
-
-    @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'RECEPTIONIST')")
-    public ResponseEntity<BillingDTO> getBillingById(@PathVariable Long id) {
-        BillingDTO dto = billingService.getBillingById(id)
-                .map(this::toDto)
-                .orElse(null);
-        return dto != null ? ResponseEntity.ok(dto) : ResponseEntity.notFound().build();
-    }
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN', 'RECEPTIONIST')")
-    public BillingDTO createBilling(@Valid @RequestBody Billing billing) {
+    public BillingDTO createBilling(@Valid @RequestBody BillingDTO dto) {
+        // convert DTO to entity and save
+        Billing billing = dtoToEntity(dto);
         Billing saved = billingService.saveBilling(billing);
         return toDto(saved);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN', 'RECEPTIONIST')")
-    public ResponseEntity<BillingDTO> updateBilling(@PathVariable Long id, @Valid @RequestBody Billing billing) {
+    public ResponseEntity<BillingDTO> updateBilling(@PathVariable Long id, @Valid @RequestBody BillingDTO dto) {
         return billingService.getBillingById(id)
                 .map(existingBilling -> {
+                    Billing billing = dtoToEntity(dto);
                     billing.setId(id);
                     Billing saved = billingService.saveBilling(billing);
                     return ResponseEntity.ok(toDto(saved));
@@ -88,6 +86,25 @@ public class BillingController {
         dto.setDate(billing.getDate());
         dto.setMethod(billing.getMethod());
         return dto;
+    }
+
+    // helper to convert DTO to entity
+    private Billing dtoToEntity(BillingDTO dto) {
+        Billing billing = new Billing();
+        if (dto.getId() != null) {
+            billing.setId(dto.getId());
+        }
+        if (dto.getPatientId() != null) {
+            // attempt to load patient reference
+            patientRepository.findById(dto.getPatientId())
+                    .ifPresent(billing::setPatient);
+        }
+        billing.setTreatment(dto.getTreatment());
+        billing.setAmount(dto.getAmount());
+        billing.setPaymentStatus(dto.getPaymentStatus());
+        billing.setDate(dto.getDate());
+        billing.setMethod(dto.getMethod());
+        return billing;
     }
 
     // ========== Role-based endpoints for logged-in users ==========

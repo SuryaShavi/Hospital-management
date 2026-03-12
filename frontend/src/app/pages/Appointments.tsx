@@ -1,10 +1,12 @@
 import { useState, useEffect } from "react";
 import { Calendar as CalendarIcon, Clock, Plus, Search, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { getAllAppointments, createAppointment, updateAppointment, deleteAppointment, Appointment } from "../services/api";
+import { getAllAppointments, createAppointment, updateAppointment, deleteAppointment, getAllPatients, getAllDoctors, Appointment } from "../services/api";
 
 export default function Appointments() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [patients, setPatients] = useState<{id?: number; name: string}[]>([]);
+  const [doctors, setDoctors] = useState<{id?: number; name: string}[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -14,8 +16,10 @@ export default function Appointments() {
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null);
   const [submitting, setSubmitting] = useState(false);
   
-  // Fetch appointments from backend on mount
+  // Fetch appointments as well as lookup data on mount
   useEffect(() => {
+    fetchPatients();
+    fetchDoctors();
     fetchAppointments();
   }, []);
 
@@ -32,10 +36,24 @@ export default function Appointments() {
     setLoading(false);
   };
 
-  // Form state
+  const fetchPatients = async () => {
+    const res = await getAllPatients();
+    if (res.data) {
+      setPatients(res.data.map(p => ({ id: p.id, name: p.name })));
+    }
+  };
+
+  const fetchDoctors = async () => {
+    const res = await getAllDoctors();
+    if (res.data) {
+      setDoctors(res.data.map(d => ({ id: d.id, name: d.name })));
+    }
+  };
+
+  // Form state uses ids
   const [formData, setFormData] = useState({
-    patientName: "",
-    doctorName: "",
+    patientId: "",
+    doctorId: "",
     date: "",
     time: "",
     type: "Check-up",
@@ -53,25 +71,25 @@ export default function Appointments() {
   // Button Handlers
   const handleAddAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
-    const appointmentData = {
-      patientName: formData.patientName,
-      doctorName: formData.doctorName,
+    const appointmentData: any = {
       date: formData.date,
       time: formData.time,
       type: formData.type,
-      status: formData.status
+      status: formData.status,
     };
+    if (formData.patientId) appointmentData.patient = { id: parseInt(formData.patientId, 10) };
+    if (formData.doctorId) appointmentData.doctor = { id: parseInt(formData.doctorId, 10) };
     
     const result = await createAppointment(appointmentData);
     if (result.error) {
       toast.error("Failed to add appointment", { description: result.error });
     } else {
       toast.success("Appointment scheduled!", {
-        description: `Appointment for ${formData.patientName} with ${formData.doctorName} on ${formData.date} at ${formData.time}`
+        description: `Appointment has been created on ${formData.date} at ${formData.time}`
       });
       setAppointments([...appointments, result.data!]);
       setIsAddModalOpen(false);
-      setFormData({ patientName: "", doctorName: "", date: "", time: "", type: "Check-up", status: "Pending" });
+      setFormData({ patientId: "", doctorId: "", date: "", time: "", type: "Check-up", status: "Pending" });
     }
   };
 
@@ -260,9 +278,12 @@ export default function Appointments() {
                         <button
                           onClick={() => {
                             setSelectedAppointment(appointment);
+                            // attempt to find ids from lookup arrays
+                            const pid = patients.find(p => p.name === appointment.patientName)?.id;
+                            const did = doctors.find(d => d.name === appointment.doctorName)?.id;
                             setFormData({
-                              patientName: appointment.patientName || "",
-                              doctorName: appointment.doctorName || "",
+                              patientId: pid ? String(pid) : "",
+                              doctorId: did ? String(did) : "",
                               date: appointment.date ? new Date(appointment.date).toISOString().split('T')[0] : "",
                               time: appointment.time || "",
                               type: appointment.type || "Check-up",
@@ -430,12 +451,12 @@ export default function Appointments() {
                 toast.error("Failed to update appointment", { description: result.error });
               } else {
                 toast.success("Appointment updated successfully!", {
-                  description: `Appointment for ${formData.patientName} has been updated.`
+                  description: `Appointment updated successfully.`
                 });
                 setAppointments(appointments.map(a => a.id === selectedAppointment.id ? result.data! : a));
                 setIsEditModalOpen(false);
                 setSelectedAppointment(null);
-                setFormData({ patientName: "", doctorName: "", date: "", time: "", type: "Check-up", status: "Pending" });
+                setFormData({ patientId: "", doctorId: "", date: "", time: "", type: "Check-up", status: "Pending" });
               }
             }} className="space-y-4">
               <div>

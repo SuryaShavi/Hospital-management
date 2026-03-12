@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { Search, Plus, Edit, Trash2, Filter, Download, Users as UsersIcon } from "lucide-react";
 import { toast } from "sonner";
-import { getAllPatients, createPatient, updatePatient, deletePatient, Patient } from "../services/api";
+import { getAllPatients, getAllDoctors, createPatient, updatePatient, deletePatient, Patient } from "../services/api";
 
 export default function Patients() {
   const [patients, setPatients] = useState<Patient[]>([]);
+  const [doctors, setDoctors] = useState<{id?: number; name: string}[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -14,8 +15,9 @@ export default function Patients() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
 
-  // Fetch patients from backend on mount
+  // Fetch patients and doctor list on mount
   useEffect(() => {
+    fetchDoctors();
     fetchPatients();
   }, []);
 
@@ -35,6 +37,13 @@ export default function Patients() {
     setLoading(false);
   };
 
+  const fetchDoctors = async () => {
+    const res = await getAllDoctors();
+    if (res.data) {
+      setDoctors(res.data);
+    }
+  };
+
   // Form state
   const [formData, setFormData] = useState({
     name: "",
@@ -44,11 +53,11 @@ export default function Patients() {
     email: "",
     address: "",
     bloodType: "",
-    doctor: "",
+    doctor: "", // will store doctor id as string
     status: "Active"
   });
 
-  // Handle form changes including doctor field (stored in address field for backend compatibility)
+  // Handle form changes (doctor field holds doctor id string)
   const handleFormChange = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -338,7 +347,7 @@ export default function Patients() {
                       {patient.contact}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                      {patient.doctor}
+                      {patient.doctor && doctors.find(d => String(d.id) === String(patient.doctor))?.name}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
@@ -450,13 +459,17 @@ export default function Patients() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Doctor</label>
-                <input
-                  type="text"
+                <select
                   value={formData.doctor}
                   onChange={(e) => setFormData({ ...formData, doctor: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   required
-                />
+                >
+                  <option value="">Select doctor</option>
+                  {doctors.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
@@ -542,13 +555,17 @@ export default function Patients() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Doctor</label>
-                <input
-                  type="text"
+                <select
                   value={formData.doctor}
                   onChange={(e) => setFormData({ ...formData, doctor: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   required
-                />
+                >
+                  <option value="">Select doctor</option>
+                  {doctors.map((d) => (
+                    <option key={d.id} value={d.id}>{d.name}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>

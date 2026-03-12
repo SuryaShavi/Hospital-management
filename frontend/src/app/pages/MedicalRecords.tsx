@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { Search, Plus, FileText, FolderOpen, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { getAllMedicalRecords, createMedicalRecord, updateMedicalRecord, deleteMedicalRecord, MedicalRecord as MedicalRecordType } from "../services/api";
+import { getAllMedicalRecords, createMedicalRecord, updateMedicalRecord, deleteMedicalRecord, getAllPatients, MedicalRecord as MedicalRecordType } from "../services/api";
 
 export default function MedicalRecords() {
   const [records, setRecords] = useState<MedicalRecordType[]>([]);
+  const [patients, setPatients] = useState<{id?: number; name: string}[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -14,10 +15,21 @@ export default function MedicalRecords() {
   const [selectedRecord, setSelectedRecord] = useState<MedicalRecordType | null>(null);
   const [submitting, setSubmitting] = useState(false);
   
-  // Fetch medical records from backend on mount
+  // Fetch medical records and patient list on mount
   useEffect(() => {
+    fetchPatients();
     fetchRecords();
   }, []);
+
+  // load patients for dropdowns
+  const fetchPatients = async () => {
+    const res = await getAllPatients();
+    if (res.data) {
+      setPatients(res.data.map(p => ({ id: p.id, name: p.name })));
+    } else if (res.error) {
+      toast.error("Failed to load patients", { description: res.error });
+    }
+  };
 
   const fetchRecords = async () => {
     setLoading(true);
@@ -34,7 +46,6 @@ export default function MedicalRecords() {
 
   // Form state
   const [formData, setFormData] = useState({
-    patientName: "",
     patientId: "",
     recordType: "Diagnosis",
     category: "General",
@@ -55,7 +66,6 @@ export default function MedicalRecords() {
   const handleAddRecord = async (e: React.FormEvent) => {
     e.preventDefault();
     const recordData = {
-      patientName: formData.patientName,
       patientId: formData.patientId,
       recordType: formData.recordType,
       category: formData.category,
@@ -68,12 +78,13 @@ export default function MedicalRecords() {
     if (result.error) {
       toast.error("Failed to add medical record", { description: result.error });
     } else {
+      const addedPatient = patients.find(p => String(p.id) === formData.patientId)?.name;
       toast.success("Medical record added!", {
-        description: `Record for ${formData.patientName} has been created.`
+        description: addedPatient ? `Record for ${addedPatient} has been created.` : `Medical record for the selected patient has been created.`
       });
       setRecords([...records, result.data!]);
       setIsAddModalOpen(false);
-      setFormData({ patientName: "", patientId: "", recordType: "Diagnosis", category: "General", date: "", doctor: "", status: "Active" });
+      setFormData({ patientId: "", recordType: "Diagnosis", category: "General", date: "", doctor: "", status: "Active" });
     }
   };
 
@@ -264,7 +275,6 @@ export default function MedicalRecords() {
                           onClick={() => {
                             setSelectedRecord(record);
                             setFormData({
-                              patientName: record.patientName || "",
                               patientId: record.patientId || "",
                               recordType: record.recordType || "Diagnosis",
                               category: record.category || "General",
@@ -324,24 +334,18 @@ export default function MedicalRecords() {
             <h2 className="text-xl font-semibold text-[#111827] mb-4">Add Medical Record</h2>
             <form onSubmit={handleAddRecord} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Patient Name</label>
-                <input
-                  type="text"
-                  value={formData.patientName}
-                  onChange={(e) => setFormData({ ...formData, patientName: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Patient ID</label>
-                <input
-                  type="text"
+                <label className="block text-sm font-medium text-gray-700 mb-1">Patient</label>
+                <select
                   value={formData.patientId}
                   onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   required
-                />
+                >
+                  <option value="">Select patient</option>
+                  {patients.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Record Type</label>
@@ -431,7 +435,6 @@ export default function MedicalRecords() {
               setSubmitting(true);
               const result = await updateMedicalRecord(selectedRecord.id, {
                 ...selectedRecord,
-                patientName: formData.patientName,
                 patientId: formData.patientId,
                 recordType: formData.recordType,
                 category: formData.category,
@@ -444,33 +447,27 @@ export default function MedicalRecords() {
                 toast.error("Failed to update medical record", { description: result.error });
               } else {
                 toast.success("Medical record updated successfully!", {
-                  description: `Record for ${formData.patientName} has been updated.`
+                  description: `Medical record has been updated.`
                 });
                 setRecords(records.map(r => r.id === selectedRecord.id ? result.data! : r));
                 setIsEditModalOpen(false);
                 setSelectedRecord(null);
-                setFormData({ patientName: "", patientId: "", recordType: "Diagnosis", category: "General", date: "", doctor: "", status: "Active" });
+                setFormData({ patientId: "", recordType: "Diagnosis", category: "General", date: "", doctor: "", status: "Active" });
               }
             }} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Patient Name</label>
-                <input
-                  type="text"
-                  value={formData.patientName}
-                  onChange={(e) => setFormData({ ...formData, patientName: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Patient ID</label>
-                <input
-                  type="text"
+                <label className="block text-sm font-medium text-gray-700 mb-1">Patient</label>
+                <select
                   value={formData.patientId}
                   onChange={(e) => setFormData({ ...formData, patientId: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
                   required
-                />
+                >
+                  <option value="">Select patient</option>
+                  {patients.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Record Type</label>
@@ -535,7 +532,7 @@ export default function MedicalRecords() {
                   onClick={() => {
                     setIsEditModalOpen(false);
                     setSelectedRecord(null);
-                    setFormData({ patientName: "", patientId: "", recordType: "Diagnosis", category: "General", date: "", doctor: "", status: "Active" });
+                    setFormData({ patientId: "", recordType: "Diagnosis", category: "General", date: "", doctor: "", status: "Active" });
                   }}
                   className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
                 >
