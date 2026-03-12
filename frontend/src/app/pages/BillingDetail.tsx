@@ -3,8 +3,8 @@ import { useParams, useNavigate } from "react-router";
 import { ArrowLeft, CreditCard, DollarSign, Calendar, FileText, User, Stethoscope, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { getBillingById, deleteBilling, Billing as BillingType } from "../services/api";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/app/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/app/components/ui/card";
 
 export default function BillingDetail() {
   const { id } = useParams<{ id: string }>();
