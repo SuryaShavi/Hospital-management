@@ -20,8 +20,6 @@ public class MedicalRecord {
     @JoinColumn(name = "patient_id")
     private Patient patient;
 
-    private String patientName;
-    private String patientId;
     private String recordType;
     private String category;
     private LocalDate date;

@@ -4,25 +4,49 @@ import com.hospital.model.Billing;
 import com.hospital.model.Patient;
 import com.hospital.repository.BillingRepository;
 import com.hospital.repository.PatientRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.hospital.dto.BillingDTO;
+import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
+/**
+ * Billing Service with constructor injection and optimized methods
+ */
 @Service
+@RequiredArgsConstructor
 public class BillingService {
 
-    @Autowired
-    private BillingRepository billingRepository;
+    private final BillingRepository billingRepository;
+    private final PatientRepository patientRepository;
 
-    @Autowired
-    private PatientRepository patientRepository;
-
-    public List<Billing> getAllBillings() {
-        return billingRepository.findAll();
+    /**
+     * Convert Billing entity to DTO (avoids lazy loading issues)
+     -->
+    private BillingDTO toDto(Billing billing) {
+        if (billing == null) return null;
+        
+        BillingDTO dto = new BillingDTO();
+        dto.setId(billing.getId());
+        if (billing.getPatient() != null) {
+            dto.setPatientId(billing.getPatient().getId());
+            dto.setPatientName(billing.getPatient().getName());
+        }
+        dto.setTreatment(billing.getTreatment());
+        dto.setAmount(billing.getAmount());
+        dto.setPaymentStatus(billing.getPaymentStatus());
+        dto.setDate(billing.getDate());
+        dto.setMethod(billing.getMethod());
+        return dto;
     }
+
+    // public List<Billing> findAllBillings() {
+        //     return billingRepository.findAll();
+        // }
+
 
     public Optional<Billing> getBillingById(@NonNull Long id) {
         return billingRepository.findById(id);
@@ -54,16 +78,25 @@ public class BillingService {
      * Get billing records for patients assigned to a specific doctor
      */
     public List<Billing> getBillingsByDoctorPatients(Long doctorId) {
-        // Get all patients assigned to this doctor
-        List<Patient> doctorPatients = patientRepository.findAll().stream()
-                .filter(p -> p.getDoctor() != null && p.getDoctor().equals(String.valueOf(doctorId)))
-                .toList();
-        
-        // Get all billing records for these patients
+        return billingRepository.findByPatientDoctorId(doctorId);
+    }
+
+    public List<BillingDTO> getAllBillingDTOs() {
         return billingRepository.findAll().stream()
-                .filter(b -> doctorPatients.stream()
-                        .anyMatch(p -> p.getId().equals(b.getPatient() != null ? b.getPatient().getId() : null)))
-                .toList();
+                .map(this::toDto)
+                .collect(Collectors.toList());
+    }
+
+    public List<BillingDTO> getBillingsByPatientIdDTO(Long patientId) {
+        return getBillingsByPatientId(patientId).stream()
+                .map(b -> toDto(b))
+                .collect(Collectors.toList());
+    }
+
+    public List<BillingDTO> getBillingsByDoctorPatientsDTO(Long doctorId) {
+        return getBillingsByDoctorPatients(doctorId).stream()
+                .map(b -> toDto(b))
+                .collect(Collectors.toList());
     }
 }
 

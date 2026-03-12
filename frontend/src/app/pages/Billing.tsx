@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Search, Plus, CreditCard, DollarSign, FileText, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { getAllBillings, createBilling, updateBilling, deleteBilling, Billing as BillingType } from "../services/api";
+import { getMyBillings, createBilling, updateBilling, deleteBilling, Billing as BillingType } from "../services/api";
 
 export default function Billing() {
   const [billings, setBillings] = useState<BillingType[]>([]);
@@ -22,7 +22,7 @@ export default function Billing() {
   const fetchBillings = async () => {
     setLoading(true);
     setError(null);
-    const result = await getAllBillings();
+    const result = await getMyBillings();
     if (result.error) {
       setError(result.error);
       toast.error("Failed to load billings", { description: result.error });

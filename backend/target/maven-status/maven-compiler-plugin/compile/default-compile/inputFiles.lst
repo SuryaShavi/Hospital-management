@@ -21,6 +21,7 @@ C:\Users\suraj\Downloads\Hospital Management\backend\src\main\java\com\hospital\
 C:\Users\suraj\Downloads\Hospital Management\backend\src\main\java\com\hospital\repository\DoctorRepository.java
 C:\Users\suraj\Downloads\Hospital Management\backend\src\main\java\com\hospital\service\MedicalRecordService.java
 C:\Users\suraj\Downloads\Hospital Management\backend\src\main\java\com\hospital\controller\PharmacyController.java
+C:\Users\suraj\Downloads\Hospital Management\backend\src\main\java\com\hospital\dto\BillingDTO.java
 C:\Users\suraj\Downloads\Hospital Management\backend\src\main\java\com\hospital\model\MedicalRecord.java
 C:\Users\suraj\Downloads\Hospital Management\backend\src\main\java\com\hospital\service\BillingService.java
 C:\Users\suraj\Downloads\Hospital Management\backend\src\main\java\com\hospital\config\SecurityConfig.java

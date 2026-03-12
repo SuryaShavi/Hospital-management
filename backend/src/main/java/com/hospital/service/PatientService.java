@@ -3,7 +3,7 @@ package com.hospital.service;
 import com.hospital.model.Patient;
 import com.hospital.model.User;
 import com.hospital.repository.PatientRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 
@@ -11,10 +11,10 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class PatientService {
 
-    @Autowired
-    private PatientRepository patientRepository;
+    private final PatientRepository patientRepository;
 
     public List<Patient> getAllPatients() {
         return patientRepository.findAll();

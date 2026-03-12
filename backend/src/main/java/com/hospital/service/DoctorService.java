@@ -5,7 +5,7 @@ import com.hospital.model.Patient;
 import com.hospital.model.User;
 import com.hospital.repository.DoctorRepository;
 import com.hospital.repository.PatientRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
 
@@ -13,13 +13,11 @@ import java.util.List;
 import java.util.Optional;
 
 @Service
+@RequiredArgsConstructor
 public class DoctorService {
 
-    @Autowired
-    private DoctorRepository doctorRepository;
-
-    @Autowired
-    private PatientRepository patientRepository;
+    private final DoctorRepository doctorRepository;
+    private final PatientRepository patientRepository;
 
     public List<Doctor> getAllDoctors() {
         return doctorRepository.findAll();
@@ -49,9 +47,7 @@ public class DoctorService {
      * Get patients assigned to a specific doctor
      */
     public List<Patient> getPatientsByDoctor(Long doctorId) {
-        return patientRepository.findAll().stream()
-                .filter(p -> p.getDoctor() != null && p.getDoctor().equals(String.valueOf(doctorId)))
-                .toList();
+        return patientRepository.findByDoctorId(doctorId);
     }
 
     /**
@@ -61,4 +57,3 @@ public class DoctorService {
         return patientRepository.findAll();
     }
 }
-

@@ -11,6 +11,7 @@ import com.hospital.repository.DoctorRepository;
 import com.hospital.repository.PatientRepository;
 import com.hospital.repository.UserRepository;
 import com.hospital.security.JwtUtil;
+import lombok.Builder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -18,6 +19,8 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -46,7 +49,7 @@ public class AuthService {
         user = userRepository.save(user);
 
         // Create corresponding Doctor or Patient record based on role and link to user
-        if (request.getRole() == Role.DOCTOR) {
+        if (Role.DOCTOR.equals(request.getRole())) {
             Doctor doctor = new Doctor();
             doctor.setUser(user);
             doctor.setName(request.getName());
@@ -57,7 +60,7 @@ public class AuthService {
             doctor.setAvailability("Available");
             doctor.setPatients(0);
             doctorRepository.save(doctor);
-        } else if (request.getRole() == Role.PATIENT) {
+        } else if (Role.PATIENT.equals(request.getRole())) {
             Patient patient = new Patient();
             patient.setUser(user);
             patient.setName(request.getName());
@@ -68,7 +71,7 @@ public class AuthService {
             patient.setStatus("Active");
             patient.setAddress("");
             patient.setBloodType("");
-            patient.setDoctor("");
+            // patient.setDoctor(null); // Will be set later when assigned
             patientRepository.save(patient);
         }
 

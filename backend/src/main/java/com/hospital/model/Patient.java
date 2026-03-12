@@ -1,6 +1,8 @@
 package com.hospital.model;
 
 import jakarta.persistence.*;
+import com.hospital.model.Doctor;
+import com.hospital.model.User;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
@@ -27,6 +29,8 @@ public class Patient {
     private String address;
     private String bloodType;
     private String status;
-    private String doctor;
-}
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "doctor_id")
+    private Doctor doctor;
+}

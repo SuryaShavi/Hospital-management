@@ -1,32 +1,30 @@
-# TODO - Remove Unused Items
+# Hospital Management Fixes - Auth & Billing
+Current working directory: c:/Users/suraj/Downloads/Hospital Management
 
-## Completed:
-- [x] Analyze project for unused imports, dependencies and items
-- [x] Remove 8 unused npm packages from frontend/package.json
-- [x] Delete duplicate CorsConfig.java file from backend
-- [x] Remove redundant @CrossOrigin annotations from all 7 controllers
-- [x] Verify application builds correctly
+## Implementation Steps (from approved plan)
 
-## Changes Summary:
-### Frontend (package.json) - Removed unused packages:
-- @emotion/react
-- @emotion/styled
-- @mui/icons-material
-- @mui/material
-- @popperjs/core
-- motion
-- react-resizable-panels
-- react-responsive-masonry
+### 1. Fix AuthService.java ✅ **COMPLETE**
+   - Add missing imports
+   - Fix Role comparisons to .equals()
+   - Inject DoctorService/PatientService
 
-### Backend - Removed duplicate CORS config:
-- Deleted CorsConfig.java (CORS already configured in SecurityConfig)
+### 2. Fix BillingController.java ✅ **COMPLETE**
+   - Switch @Autowired → @RequiredArgsConstructor
+   - Add missing imports  
+   - Ensure consistent DTO returns
 
-### Backend - Removed redundant @CrossOrigin from:
-- AppointmentController.java
-- BillingController.java
-- DoctorController.java
-- MedicalRecordController.java
-- PatientController.java
-- PharmacyController.java
-- AuthController.java
+### 3. Fix BillingService.java ✅ **COMPLETE**
+   - Add missing imports
+
+### 4. Verify compilation [PENDING]
+   - `mvn clean compile`
+
+### 5. Test backend [PENDING]
+   - `mvn spring-boot:run`
+   - Test /api/billings/my-billings
+
+### 6. Frontend verification [PENDING]
+   - Check Billing.tsx page loads without errors
+
+**Status: Implementation started**
 

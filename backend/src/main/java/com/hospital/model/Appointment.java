@@ -25,8 +25,6 @@ public class Appointment {
     @JoinColumn(name = "patient_id")
     private Patient patient;
 
-    private String patientName;
-    private String doctorName;
     private LocalDate date;
     private LocalTime time;
     private String type;
