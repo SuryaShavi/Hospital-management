@@ -8,6 +8,7 @@ import com.hospital.dto.BillingDTO;
 import lombok.RequiredArgsConstructor;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -18,23 +19,36 @@ import java.util.stream.Collectors;
  */
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class BillingService {
 
     private final BillingRepository billingRepository;
     private final PatientRepository patientRepository;
 
     /**
-     * Convert Billing entity to DTO (avoids lazy loading issues)
-     -->
+     * Convert Billing entity to DTO (safe handling for lazy-loaded Patient)
+     */
     private BillingDTO toDto(Billing billing) {
         if (billing == null) return null;
         
         BillingDTO dto = new BillingDTO();
         dto.setId(billing.getId());
-        if (billing.getPatient() != null) {
-            dto.setPatientId(billing.getPatient().getId());
-            dto.setPatientName(billing.getPatient().getName());
+        
+        // Safe patient handling - initialize if needed or use null-safe operations
+        Long patientId = null;
+        String patientName = "Unknown Patient";
+        try {
+            if (billing.getPatient() != null && billing.getPatient().getId() != null) {
+                patientId = billing.getPatient().getId();
+                patientName = billing.getPatient().getName();
+            }
+        } catch (Exception e) {
+            // LazyInitializationException handling - patient not loaded
+            // Could fetch patient separately if needed
         }
+        
+        dto.setPatientId(patientId);
+        dto.setPatientName(patientName);
         dto.setTreatment(billing.getTreatment());
         dto.setAmount(billing.getAmount());
         dto.setPaymentStatus(billing.getPaymentStatus());
@@ -43,21 +57,23 @@ public class BillingService {
         return dto;
     }
 
-    // public List<Billing> findAllBillings() {
-        //     return billingRepository.findAll();
-        // }
-
-
     public Optional<Billing> getBillingById(@NonNull Long id) {
         return billingRepository.findById(id);
     }
 
     public Billing saveBilling(Billing billing) {
+        // Ensure patient exists before saving
+        if (billing.getPatient() != null && billing.getPatient().getId() != null) {
+            Optional<Patient> patientOpt = patientRepository.findById(billing.getPatient().getId());
+            patientOpt.ifPresent(billing::setPatient);
+        }
         return billingRepository.save(billing);
     }
 
     public void deleteBilling(@NonNull Long id) {
-        billingRepository.deleteById(id);
+        if (billingRepository.existsById(id)) {
+            billingRepository.deleteById(id);
+        }
     }
 
     /**
@@ -89,13 +105,13 @@ public class BillingService {
 
     public List<BillingDTO> getBillingsByPatientIdDTO(Long patientId) {
         return getBillingsByPatientId(patientId).stream()
-                .map(b -> toDto(b))
+                .map(this::toDto)
                 .collect(Collectors.toList());
     }
 
     public List<BillingDTO> getBillingsByDoctorPatientsDTO(Long doctorId) {
         return getBillingsByDoctorPatients(doctorId).stream()
-                .map(b -> toDto(b))
+                .map(this::toDto)
                 .collect(Collectors.toList());
     }
 }

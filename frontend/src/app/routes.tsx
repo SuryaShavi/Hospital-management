@@ -8,6 +8,7 @@ import Doctors from "./pages/Doctors";
 import Appointments from "./pages/Appointments";
 import MedicalRecords from "./pages/MedicalRecords";
 import Billing from "./pages/Billing";
+import BillingDetail from "./pages/BillingDetail";
 import Pharmacy from "./pages/Pharmacy";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
@@ -31,8 +32,8 @@ const checkRouteAccess = ({ request }: { request: Request }) => {
     return redirect("/login");
   }
   
-  // Extract route name from path (e.g., "/patients" -> "patients")
-  const routeName = pathName === "/" ? "dashboard" : pathName.replace("/", "");
+  // Extract route name from path (e.g., "/billing" or "/billing/123" -> "billing")
+  const routeName = pathName === "/" ? "dashboard" : pathName.split('/')[1];
   
   // Convert to UserRole type
   const userRole = user.role as UserRole;
@@ -87,7 +88,14 @@ export const router = createBrowserRouter([
       { 
         path: "billing", 
         Component: Billing,
-        loader: checkRouteAccess
+        loader: checkRouteAccess,
+        children: [
+          {
+            path: ":id",
+            Component: BillingDetail,
+            loader: checkRouteAccess
+          }
+        ]
       },
       { 
         path: "pharmacy", 
@@ -107,3 +115,4 @@ export const router = createBrowserRouter([
     ],
   },
 ]);
+

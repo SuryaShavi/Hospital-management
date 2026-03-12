@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
-import { Search, Plus, CreditCard, DollarSign, FileText, Pencil, Trash2 } from "lucide-react";
+import { useNavigate } from "react-router";
+import { Search, Plus, CreditCard, DollarSign, FileText, Pencil, Trash2, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { getMyBillings, createBilling, updateBilling, deleteBilling, Billing as BillingType } from "../services/api";
 
 export default function Billing() {
+  const navigate = useNavigate();
   const [billings, setBillings] = useState<BillingType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,6 +60,10 @@ export default function Billing() {
   const pendingAmount = filteredBillings
     .filter((b) => b.paymentStatus === "Pending")
     .reduce((sum, b) => sum + (b.amount || 0), 0);
+
+  const handleViewBilling = (billingId: number) => {
+    navigate(`/billing/${billingId}`);
+  };
 
   // Button Handlers
   const handleAddInvoice = async (e: React.FormEvent) => {
@@ -231,8 +237,12 @@ export default function Billing() {
               {filteredBillings.length > 0 ? (
                 filteredBillings.map((billing) => (
                   <tr key={billing.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#2563EB]">
-                      {billing.id}
+                    <td 
+                      className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#2563EB] cursor-pointer hover:underline" 
+                      onClick={() => billing.id && handleViewBilling(billing.id)}
+                      title="Click to view details"
+                    >
+                      #{billing.id}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[#111827]">
                       {billing.patientName}
@@ -266,7 +276,14 @@ export default function Billing() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => billing.id && handleViewBilling(billing.id)}
+                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          title="View Details"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => {
                             setSelectedBilling(billing);
@@ -299,7 +316,7 @@ export default function Billing() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12">
+                  <td colSpan={9} className="px-6 py-12">
                     <div className="flex flex-col items-center justify-center text-center">
                       <FileText className="w-16 h-16 text-gray-300 mb-4" />
                       <h3 className="text-lg font-medium text-gray-900 mb-1">

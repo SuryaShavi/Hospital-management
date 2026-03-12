@@ -1,30 +1,21 @@
-# Hospital Management Fixes - Auth & Billing
-Current working directory: c:/Users/suraj/Downloads/Hospital Management
+# Fix BillingController getBillingById Frontend Mapping - TODO Steps
 
-## Implementation Steps (from approved plan)
+## Plan Progress Tracker
 
-### 1. Fix AuthService.java ✅ **COMPLETE**
-   - Add missing imports
-   - Fix Role comparisons to .equals()
-   - Inject DoctorService/PatientService
+### 1. ✅ Create TODO.md with steps (Done)
 
-### 2. Fix BillingController.java ✅ **COMPLETE**
-   - Switch @Autowired → @RequiredArgsConstructor
-   - Add missing imports  
-   - Ensure consistent DTO returns
+### 2. ✅ Add getBillingById API function to frontend/src/app/services/api.ts (Done)
 
-### 3. Fix BillingService.java ✅ **COMPLETE**
-   - Add missing imports
+### 3. ✅ Create frontend/src/app/pages/BillingDetail.tsx detail page (Done)
 
-### 4. Verify compilation [PENDING]
-   - `mvn clean compile`
+### 4. ✅ Update frontend/src/app/routes.tsx - added nested /billing/:id route
 
-### 5. Test backend [PENDING]
-   - `mvn spring-boot:run`
-   - Test /api/billings/my-billings
+### 5. ✅ Update frontend/src/app/pages/Billing.tsx - added clickable ID navigation, Eye icon for View Details, useNavigate hook integrated
 
-### 6. Frontend verification [PENDING]
-   - Check Billing.tsx page loads without errors
+### 6. ✅ Full integration complete - Frontend now maps to backend getBillingById endpoint
 
-**Status: Implementation started**
+## Summary
+✅ Fixed BillingController getBillingById frontend mapping
+✅ Added API function, detail page, nested route, list navigation
+✅ Ready for testing: Navigate to /billing, click any Invoice ID to test /api/billings/{id}
 

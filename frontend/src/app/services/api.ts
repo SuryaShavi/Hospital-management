@@ -394,7 +394,7 @@ export async function deleteAppointment(id: number): Promise<ApiResponse<void>> 
       method: 'DELETE',
       headers: getAuthHeaders(),
     });
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);  
     return { data: undefined };
   } catch (error) {
     console.error('Error deleting appointment:', error);
@@ -417,6 +417,18 @@ export async function getAllBillings(): Promise<ApiResponse<Billing[]>> {
   }
 }
 
+export async function getBillingById(id: number): Promise<ApiResponse<Billing>> {
+  try {
+    const response = await fetch(`${API_BASE_URL}/billings/${id}`, {
+      headers: getAuthHeaders(),
+    });
+    return await handleResponse<Billing>(response);
+  } catch (error) {
+    console.error('Error fetching billing by ID:', error);
+    return { error: error instanceof Error ? error.message : 'Failed to fetch billing' };
+  }
+}
+
 export async function createBilling(billing: Omit<Billing, 'id'>): Promise<ApiResponse<Billing>> {
   try {
     const response = await fetch(`${API_BASE_URL}/billings`, {
@@ -424,9 +436,7 @@ export async function createBilling(billing: Omit<Billing, 'id'>): Promise<ApiRe
       headers: getAuthHeaders(),
       body: JSON.stringify(billing),
     });
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    const data = await response.json();
-    return { data };
+    return await handleResponse<Billing>(response);
   } catch (error) {
     console.error('Error creating billing:', error);
     return { error: error instanceof Error ? error.message : 'Failed to create billing' };
@@ -440,9 +450,7 @@ export async function updateBilling(id: number, billing: Billing): Promise<ApiRe
       headers: getAuthHeaders(),
       body: JSON.stringify(billing),
     });
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    const data = await response.json();
-    return { data };
+    return await handleResponse<Billing>(response);
   } catch (error) {
     console.error('Error updating billing:', error);
     return { error: error instanceof Error ? error.message : 'Failed to update billing' };
@@ -455,8 +463,7 @@ export async function deleteBilling(id: number): Promise<ApiResponse<void>> {
       method: 'DELETE',
       headers: getAuthHeaders(),
     });
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    return { data: undefined };
+    return await handleResponse<void>(response);
   } catch (error) {
     console.error('Error deleting billing:', error);
     return { error: error instanceof Error ? error.message : 'Failed to delete billing' };
@@ -667,9 +674,7 @@ export async function getMyBillings(): Promise<ApiResponse<Billing[]>> {
     const response = await fetch(`${API_BASE_URL}/billings/my-billings`, {
       headers: getAuthHeaders(),
     });
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    const data = await response.json();
-    return { data };
+    return await handleResponse<Billing[]>(response);
   } catch (error) {
     console.error('Error fetching billings:', error);
     return { error: error instanceof Error ? error.message : 'Failed to fetch billings' };
@@ -743,3 +748,4 @@ export async function getDashboardStats(): Promise<ApiResponse<DashboardStats>> 
     return { error: error instanceof Error ? error.message : 'Failed to fetch dashboard stats' };
   }
 }
+
