@@ -1,6 +1,5 @@
 package com.hospital.security;
 
-import com.hospital.model.User;
 import com.hospital.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
