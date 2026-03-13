@@ -33,6 +33,8 @@ dist-ssr
 
 # Testing
 coverage
+testing/TEST_REPORT.md
+testing/test-results/
 
 # TypeScript
 *.tsbuildinfo

@@ -1,13 +1,15 @@
 import { useState, useEffect } from "react";
 import { Search, Plus, FileText, FolderOpen, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { getAllMedicalRecords, createMedicalRecord, updateMedicalRecord, deleteMedicalRecord, getAllPatients, MedicalRecord as MedicalRecordType } from "../services/api";
+import { authApi, getAllMedicalRecords, getMyMedicalRecords, createMedicalRecord, updateMedicalRecord, deleteMedicalRecord, getAllPatients, MedicalRecord as MedicalRecordType } from "../services/api";
 
 export default function MedicalRecords() {
   const [records, setRecords] = useState<MedicalRecordType[]>([]);
   const [patients, setPatients] = useState<{id?: number; name: string}[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const currentUser = authApi.getUser();
+  const isPatient = currentUser?.role === 'PATIENT';
   const [searchTerm, setSearchTerm] = useState("");
   const [filterCategory, setFilterCategory] = useState("all");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -34,7 +36,8 @@ export default function MedicalRecords() {
   const fetchRecords = async () => {
     setLoading(true);
     setError(null);
-    const result = await getAllMedicalRecords();
+    const user = authApi.getUser();
+    const result = user && user.role === 'PATIENT' ? await getMyMedicalRecords() : await getAllMedicalRecords();
     if (result.error) {
       setError(result.error);
       toast.error("Failed to load medical records", { description: result.error });
@@ -65,7 +68,8 @@ export default function MedicalRecords() {
   // Button Handlers
   const handleAddRecord = async (e: React.FormEvent) => {
     e.preventDefault();
-    const recordData = {
+    // payload sent to backend does not include patientName
+    const recordData: Omit<MedicalRecordType, 'id' | 'patientName'> = {
       patientId: formData.patientId,
       recordType: formData.recordType,
       category: formData.category,
@@ -109,13 +113,15 @@ export default function MedicalRecords() {
           <h1 className="text-3xl font-bold text-[#111827]">Medical Records</h1>
           <p className="text-gray-500 mt-1">Manage patient medical records and history</p>
         </div>
-        <button 
-          onClick={() => setIsAddModalOpen(true)}
-          className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          Add Record
-        </button>
+        {!isPatient && (
+          <button 
+            onClick={() => setIsAddModalOpen(true)}
+            className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            Add Record
+          </button>
+        )}
       </div>
 
       {/* Stats Cards */}
@@ -270,6 +276,7 @@ export default function MedicalRecords() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
+                      {!isPatient && (
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => {
@@ -297,6 +304,7 @@ export default function MedicalRecords() {
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>
+                    )}
                     </td>
                   </tr>
                 ))
@@ -311,13 +319,15 @@ export default function MedicalRecords() {
                       <p className="text-sm text-gray-500 mb-4">
                         Add medical records to start managing patient history.
                       </p>
-                      <button 
-                        onClick={() => setIsAddModalOpen(true)}
-                        className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                      >
-                        <Plus className="w-5 h-5" />
-                        Add Record
-                      </button>
+                      {!isPatient && (
+                        <button 
+                          onClick={() => setIsAddModalOpen(true)}
+                          className="inline-flex items-center gap-2 bg-[#2563EB] hover:bg-[#1d4ed8] text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                        >
+                          <Plus className="w-5 h-5" />
+                          Add Record
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

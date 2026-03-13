@@ -22,7 +22,8 @@ public class AppointmentController {
     private UserContextService userContextService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'RECEPTIONIST')")
+    // allow nurses to view the list as well
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'RECEPTIONIST', 'NURSE')")
     public List<Appointment> getAllAppointments() {
         // doctors should only see their own appointments
         if (userContextService.isDoctor()) {
@@ -35,7 +36,7 @@ public class AppointmentController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'RECEPTIONIST')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'RECEPTIONIST', 'NURSE')")
     public ResponseEntity<Appointment> getAppointmentById(@PathVariable Long id) {
         return appointmentService.getAppointmentById(id)
                 .map(ResponseEntity::ok)
@@ -43,13 +44,14 @@ public class AppointmentController {
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'RECEPTIONIST')")
+    // nurses should be able to schedule appointments as well
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'RECEPTIONIST', 'NURSE')")
     public Appointment createAppointment(@Valid @RequestBody Appointment appointment) {
         return appointmentService.saveAppointment(appointment);
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'RECEPTIONIST')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DOCTOR', 'RECEPTIONIST', 'NURSE')")
     public ResponseEntity<Appointment> updateAppointment(@PathVariable Long id, @Valid @RequestBody Appointment appointment) {
         return appointmentService.getAppointmentById(id)
                 .map(existingAppointment -> {

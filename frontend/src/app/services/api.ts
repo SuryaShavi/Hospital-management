@@ -204,7 +204,8 @@ export interface Pharmacy {
 // ============== Medical Record ==============
 export interface MedicalRecord {
   id?: number;
-  patientName: string;
+  // name from the joined patient record (not required when creating/updating)
+  patientName?: string;
   patientId: string;
   recordType: string;
   category: string;
@@ -723,7 +724,8 @@ export async function getAllMedicalRecords(): Promise<ApiResponse<MedicalRecord[
   }
 }
 
-export async function createMedicalRecord(record: Omit<MedicalRecord, 'id'>): Promise<ApiResponse<MedicalRecord>> {
+// when creating we don't send patientName (backend ignores it)
+export async function createMedicalRecord(record: Omit<MedicalRecord, 'id' | 'patientName'>): Promise<ApiResponse<MedicalRecord>> {
   try {
     const payload: any = {
       recordType: record.recordType,
@@ -927,10 +929,14 @@ export async function getDashboardStats(): Promise<ApiResponse<DashboardStats>> 
     const stats: DashboardStats = {};
 
     // Fetch all counts in parallel
+    // patients can't call the generic /appointments endpoint
+    const appointmentsUrl = user.role === 'PATIENT' ?
+      `${API_BASE_URL}/appointments/my-appointments` :
+      `${API_BASE_URL}/appointments`;
     const [patientsRes, doctorsRes, appointmentsRes] = await Promise.all([
       fetch(`${API_BASE_URL}/patients`, { headers: getAuthHeaders() }),
       fetch(`${API_BASE_URL}/doctors`, { headers: getAuthHeaders() }),
-      fetch(`${API_BASE_URL}/appointments`, { headers: getAuthHeaders() })
+      fetch(appointmentsUrl, { headers: getAuthHeaders() })
     ]);
 
     const patients = patientsRes.ok ? await patientsRes.json() : [];
@@ -962,6 +968,12 @@ export async function getDashboardStats(): Promise<ApiResponse<DashboardStats>> 
         stats.myAppointments = appointments.filter((a: Appointment) => 
           a.patientName === patient.name
         ).length;
+        // count medical records as well
+        const recordsRes = await fetch(`${API_BASE_URL}/medical-records/my-records`, { headers: getAuthHeaders() });
+        if (recordsRes.ok) {
+          const records = await recordsRes.json();
+          stats.myRecords = Array.isArray(records) ? records.length : 0;
+        }
       }
     }
 

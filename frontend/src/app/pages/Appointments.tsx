@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { Calendar as CalendarIcon, Clock, Plus, Search, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
-import { getAllAppointments, createAppointment, updateAppointment, deleteAppointment, getAllPatients, getAllDoctors, Appointment } from "../services/api";
+import { authApi, getAllAppointments, getMyAppointments, createAppointment, updateAppointment, deleteAppointment, getAllPatients, getAllDoctors, Appointment } from "../services/api";
 
 export default function Appointments() {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -26,7 +26,9 @@ export default function Appointments() {
   const fetchAppointments = async () => {
     setLoading(true);
     setError(null);
-    const result = await getAllAppointments();
+    // patients should only fetch their own appointments using the role-based endpoint
+    const user = authApi.getUser();
+    const result = user && user.role === 'PATIENT' ? await getMyAppointments() : await getAllAppointments();
     if (result.error) {
       setError(result.error);
       toast.error("Failed to load appointments", { description: result.error });
